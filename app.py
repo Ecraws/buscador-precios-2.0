@@ -50,8 +50,8 @@ def cargar_datos():
 df = cargar_datos()
 
 if df is not None:
-    # Inicializamos las variables de control en la memoria de la app si no existen
-    if 'buscar_este_codigo' not North and 'buscar_este_codigo' not in st.session_state:
+    # LÍNEA 54 CORREGIDA: Inicializamos las variables en la memoria si no existen
+    if 'buscar_este_codigo' not in st.session_state:
         st.session_state.buscar_este_codigo = ""
 
     # Capturamos de forma oculta e inmediata lo que envíe el JavaScript de la cámara
@@ -60,7 +60,7 @@ if df is not None:
         if nuevo_codigo and nuevo_codigo != st.session_state.buscar_este_codigo:
             st.session_state.buscar_este_codigo = nuevo_codigo
             st.session_state.barcode_detected = "" # Limpiamos el puente para la próxima
-            st.rerun() # <-- TRUCO CLAVE: Fuerza a la app a buscar YA el producto
+            st.rerun() # Fuerza a la app a buscar YA el producto
 
     # Pestañas de navegación
     tab1, tab2 = st.tabs(["🔍 Buscar Tipeando", "📷 Lector de Barras HD"])
@@ -73,7 +73,7 @@ if df is not None:
 
     # --- PESTAÑA 2: CÁMARA ESCÁNER AUTOMÁTICO ---
     with tab2:
-        # Si ya hay un producto buscado, apagamos la cámara temporalmente para que no siga leyendo en bucle
+        # Si ya hay un producto buscado, apagamos la cámara temporalmente
         if st.session_state.buscar_este_codigo:
             st.write("✨ ¡Escaneo realizado con éxito!")
             if st.button("📷 Escanear otro producto", type="primary"):
@@ -133,7 +133,7 @@ if df is not None:
                         }, '*');
                         
                         if (navigator.vibrate) navigator.vibrate(200);
-                        Quagga.stop(); // Frena el video para ahorrar batería mientras se procesa
+                        Quagga.stop(); 
                     }
                 }
             });
@@ -170,7 +170,6 @@ if df is not None:
                 </div>
                 """, unsafe_allow_html=True)
             
-            # Botón de limpieza al final de los resultados por comodidad
             if st.button("❌ Limpiar búsqueda actual"):
                 st.session_state.buscar_este_codigo = ""
                 st.rerun()
