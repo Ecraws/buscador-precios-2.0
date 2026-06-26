@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import re
 from datetime import datetime
 
 # Configuración de página optimizada para rendimiento y diseño móvil
@@ -123,20 +124,6 @@ st.markdown("""
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
     }
-    
-    /* Etiquetas de ofertas */
-    .badge-oferta {
-        display: inline-block;
-        padding: 4px 10px;
-        background: linear-gradient(135deg, #ff4757, #ff6b81);
-        color: white !important;
-        font-weight: 700;
-        font-size: 11px;
-        border-radius: 8px;
-        text-transform: uppercase;
-        margin-bottom: 10px;
-        letter-spacing: 0.5px;
-    }
 
     .info-oferta-bloque {
         background: rgba(255, 71, 87, 0.08);
@@ -216,6 +203,14 @@ def limpiar_codigo(cod):
         st_cod = st_cod.split('.')[0]
     return st_cod.lower()
 
+# Función para separar códigos múltiples (ej: "2349 | 1187" -> ["2349", "1187"])
+def fragmentar_codigos_multiples(celda):
+    if pd.isna(celda): return []
+    texto = str(celda).strip()
+    # Separa por barras, guiones, comas o espacios extras
+    partes = re.split(r'[\|\-,\s]+', texto)
+    return [limpiar_codigo(p) for p in partes if p.strip() != ""]
+
 # --- CARGA Y INDEXACIÓN EXTREMA EN MEMORIA ---
 @st.cache_data(show_spinner=False)
 def cargar_todo():
@@ -270,18 +265,25 @@ def cargar_todo():
                 if c_int: mapa_ofertas[c_int] = of_data
                 if c_sku: mapa_ofertas[c_sku] = of_data
 
-        # Hoja: COMBOS
+        # Hoja: COMBOS (¡SOPORTE MULTI-CÓDIGO INTEGRADO!)
         if "COMBOS" in xls.sheet_names:
             df_comb = pd.read_excel(xls, sheet_name="COMBOS")
             for _, fila in df_comb.iterrows():
-                c_int = limpiar_codigo(fila.iloc[0]) # Columna A
-                c_sku = limpiar_codigo(fila.iloc[2]) # Columna C
+                # Obtenemos todos los códigos individuales de las celdas
+                lista_internos = fragmentar_codigos_multiples(fila.iloc[0]) # Columna A
+                lista_skus = fragmentar_codigos_multiples(fila.iloc[2])     # Columna C
+                
                 of_data = {
                     'tipo': 'COMBO', 'precio_of': fila.iloc[5], # Columna F
-                    'ahorro': fila.iloc[6], 'concepto': fila.iloc[3], 'hasta': fila.iloc[8]
+                    'ahorro': fila.iloc[6], 'concepto': fila.iloc[3], 'hasta': fila.iloc[8] # Columna D (Productos) como concepto
                 }
-                if c_int: mapa_ofertas[c_int] = of_data
-                if c_sku: mapa_ofertas[c_sku] = of_data
+                
+                # Registramos el combo para cada código interno que tenga la celda
+                for sub_int in lista_internos:
+                    mapa_ofertas[sub_int] = of_data
+                # Registramos el combo para cada scanner que tenga la celda
+                for sub_sku in lista_skus:
+                    mapa_ofertas[sub_sku] = of_data
 
     except Exception as e:
         st.warning("⚠️ No se encontró 'padron de ofertas.xlsx' o tiene formato incorrecto.")
@@ -292,97 +294,5 @@ df_base, mapa_base, mapa_ofertas = cargar_todo()
 
 if df_base is not None:
     if 'historial' not in st.session_state:
-        st.session_state.historial = []
-
-    with st.form(key="formulario_busqueda", clear_on_submit=False):
-        busqueda = st.text_input("🔍 Buscar Producto:", placeholder="Código o nombre...").strip().lower()
-        bot_buscar = st.form_submit_button("CONSEGUIR PRECIO")
-
-    if busqueda:
-        resultados_lista = []
+        st
         
-        if busqueda in mapa_base:
-            resultados_lista.append(mapa_base[busqueda])
-        else:
-            res_df = df_base[df_base['Descripcion_Clean'].str.lower().str.contains(busqueda, na=False)]
-            for _, fila in res_df.iterrows():
-                resultados_lista.append({
-                    'desc': fila['Descripcion_Clean'], 'precio': fila['Precio_Clean'],
-                    'interno': fila['cod_interno_clean'], 'scanner': fila['cod_scanner_clean'],
-                    'sector': str(fila['Descrip Sector']).strip() if pd.notna(fila['Descrip Sector']) else 'N/A'
-                })
-
-        if resultados_lista:
-            # Historial rápido
-            st.markdown('<p style="font-weight: 700; font-size: 15px; margin-top:20px; color:#94a3b8 !important;">📌 Guardar en Consultas Recientes:</p>', unsafe_allow_html=True)
-            opciones_historial = [f"{p['desc']} ({formatear_precio(p['precio'])})" for p in resultados_lista]
-            seleccion_prod = st.selectbox("Historial:", options=opciones_historial, label_visibility="collapsed")
-            
-            if st.button("REGISTRAR EN HISTORIAL"):
-                if seleccion_prod:
-                    idx = opciones_historial.index(seleccion_prod)
-                    p_elegido = resultados_lista[idx]
-                    item_hist = f"{p_elegido['desc']} - **{formatear_precio(p_elegido['precio'])}**"
-                    if not st.session_state.historial or st.session_state.historial[0] != item_hist:
-                        st.session_state.historial.insert(0, item_hist)
-                        if len(st.session_state.historial) > 4: st.session_state.historial.pop()
-                    st.success("¡Agregado!")
-
-            st.write("---")
-            st.markdown(f'<h3 style="font-size:18px; font-weight:700; color:#94a3b8 !important;">📦 Encontrados ({len(resultados_lista)}):</h3>', unsafe_allow_html=True)
-            
-            # --- DESPLIEGUE SEGURO DE TARJETAS CON OFERTAS ---
-            for prod in resultados_lista:
-                # Comprobar si existe oferta vinculada por código interno o escáner
-                oferta_vinculada = mapa_ofertas.get(prod['interno']) or mapa_ofertas.get(prod['scanner'])
-                
-                precio_base_visual = formatear_precio(prod['precio'])
-                cod_int = prod['interno'] if prod['interno'] != '' else 'N/A'
-                cod_scan = prod['scanner'] if prod['scanner'] != '' else 'N/A'
-                
-                if oferta_vinculada:
-                    precio_oferta_visual = formatear_precio(oferta_vinculada['precio_of'])
-                    txt_ahorro = f" | Ahorrás: {formatear_precio(oferta_vinculada['ahorro'])}" if oferta_vinculada['ahorro'] else ""
-                    txt_hasta = formatear_fecha(oferta_vinculada['hasta'])
-                    concepto_txt = str(oferta_vinculada['concepto']).upper() if pd.notna(oferta_vinculada['concepto']) else "PROMOCIÓN"
-                    
-                    html_tarjeta = (
-                        f'<div class="producto-card con-oferta">'
-                        f'<span class="badge-of">🔥 {oferta_vinculada["tipo"]}</span>'
-                        f'<h2 class="producto-titulo">{prod["desc"]}</h2>'
-                        f'<div class="precio-contenedor">'
-                        f'<p class="precio-enorme precio-oferta-color">{precio_oferta_visual}</p>'
-                        f'<p style="margin:5px 0 0 0; font-size:13px; color:#94a3b8 !important;">Precio normal: <del>{precio_base_visual}</del></p>'
-                        f'</div>'
-                        f'<div class="info-oferta-bloque">'
-                        f'✨ <b>{concepto_txt}</b>{txt_ahorro}<br>📅 Vence: {txt_hasta}'
-                        f'</div>'
-                        f'<div class="meta-flex">'
-                        f'<div class="meta-item"><span class="meta-label">Código Interno</span><span class="meta-valor">{cod_int}</span></div>'
-                        f'<div class="meta-item"><span class="meta-label">Sector</span><span class="meta-valor">{prod["sector"]}</span></div>'
-                        f'<div class="meta-item"><span class="meta-label">Scanner / EAN</span><span class="meta-valor">{cod_scan}</span></div>'
-                        f'</div>'
-                        f'</div>'
-                    )
-                else:
-                    html_tarjeta = (
-                        f'<div class="producto-card">'
-                        f'<h2 class="producto-titulo">{prod["desc"]}</h2>'
-                        f'<div class="precio-contenedor"><p class="precio-enorme">{precio_base_visual}</p></div>'
-                        f'<div class="meta-flex">'
-                        f'<div class="meta-item"><span class="meta-label">Código Interno</span><span class="meta-valor">{cod_int}</span></div>'
-                        f'<div class="meta-item"><span class="meta-label">Sector</span><span class="meta-valor">{prod["sector"]}</span></div>'
-                        f'<div class="meta-item"><span class="meta-label">Scanner / EAN</span><span class="meta-valor">{cod_scan}</span></div>'
-                        f'</div>'
-                        f'</div>'
-                    )
-                st.markdown(html_tarjeta, unsafe_allow_html=True)
-        else:
-            st.error(f"🔍 No se encontró ningún artículo para: '{busqueda}'.")
-
-    if st.session_state.historial:
-        st.write("---")
-        st.markdown('<h3 style="font-size:18px; font-weight:700; color:#94a3b8 !important;">📋 Últimas consultas:</h3>', unsafe_allow_html=True)
-        for item in st.session_state.historial:
-            st.markdown(f'<div class="historial-item">🔹 {item}</div>', unsafe_allow_html=True)
-                    
