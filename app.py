@@ -227,7 +227,7 @@ if df is not None:
             key="input_text"
         ).strip().lower()
         
-        bot_buscar = st.form_submit_button("CONSEGUIR PRECIO", use_container_width=True)
+        bot_buscar = st.form_submit_button("CONSEGUIR PRECIO")
 
     # --- PROCESAMIENTO DE BÚSQUEDA ---
     if busqueda:
@@ -260,7 +260,7 @@ if df is not None:
                 label_visibility="collapsed"
             )
             
-            if st.button("REGISTRAR EN HISTORIAL", use_container_width=True):
+            if st.button("REGISTRAR EN HISTORIAL"):
                 if seleccion_prod:
                     idx = opciones_historial.index(seleccion_prod)
                     prod_elegido = resultados_lista[idx]
@@ -275,7 +275,7 @@ if df is not None:
             st.write("---")
             st.markdown(f'<h3 style="font-size:18px; font-weight:700; color:#94a3b8 !important;">📦 Productos Encontrados ({len(resultados_lista)}):</h3>', unsafe_allow_html=True)
             
-            # RENDERIZADO DE LAS TARJETAS PREMIUM
+            # RENDERIZADO DE LAS TARJETAS PREMIUM (¡CORREGIDO AQUÍ!)
             for prod in resultados_lista:
                 precio_visual = formatear_precio(prod['precio'])
                 cod_int = prod['interno'] if prod['interno'] != 'nan' else 'N/A'
