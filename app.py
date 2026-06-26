@@ -103,8 +103,6 @@ st.markdown("""
         border-radius: 16px;
         margin-bottom: 18px;
         border: 1px solid rgba(255, 255, 255, 0.05);
-        display: flex;
-        align-items: center;
     }
     
     .precio-enorme {
@@ -275,36 +273,24 @@ if df is not None:
             st.write("---")
             st.markdown(f'<h3 style="font-size:18px; font-weight:700; color:#94a3b8 !important;">📦 Productos Encontrados ({len(resultados_lista)}):</h3>', unsafe_allow_html=True)
             
-            # RENDERIZADO DE LAS TARJETAS PREMIUM (¡CORREGIDO AQUÍ!)
+            # RENDERIZADO SEGURO ANTI-FALLAS (Se unificó todo el HTML en líneas continuas estrictas)
             for prod in resultados_lista:
                 precio_visual = formatear_precio(prod['precio'])
                 cod_int = prod['interno'] if prod['interno'] != 'nan' else 'N/A'
                 cod_scan = prod['scanner'] if prod['scanner'] != 'nan' else 'N/A'
                 
-                st.markdown(f"""
-                <div class="producto-card">
-                    <h2 class="producto-titulo">{prod['desc']}</h2>
-                    
-                    <div class="precio-contenedor">
-                        <p class="precio-enorme">{precio_visual}</p>
-                    </div>
-                    
-                    <div class="meta-flex">
-                        <div class="meta-item">
-                            <span class="meta-label">Código Interno</span>
-                            <span class="meta-valor">{cod_int}</span>
-                        </div>
-                        <div class="meta-item">
-                            <span class="meta-label">Sector</span>
-                            <span class="meta-valor">{prod['sector']}</span>
-                        </div>
-                        <div class="meta-item">
-                            <span class="meta-label">Scanner / EAN</span>
-                            <span class="meta-valor">{cod_scan}</span>
-                        </div>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
+                html_tarjeta = (
+                    f'<div class="producto-card">'
+                    f'<h2 class="producto-titulo">{prod["desc"]}</h2>'
+                    f'<div class="precio-contenedor"><p class="precio-enorme">{precio_visual}</p></div>'
+                    f'<div class="meta-flex">'
+                    f'<div class="meta-item"><span class="meta-label">Código Interno</span><span class="meta-valor">{cod_int}</span></div>'
+                    f'<div class="meta-item"><span class="meta-label">Sector</span><span class="meta-valor">{prod["sector"]}</span></div>'
+                    f'<div class="meta-item"><span class="meta-label">Scanner / EAN</span><span class="meta-valor">{cod_scan}</span></div>'
+                    f'</div>'
+                    f'</div>'
+                )
+                st.markdown(html_tarjeta, unsafe_allow_html=True)
         else:
             st.error(f"🔍 No se encontró ningún artículo para: '{busqueda}'.")
 
