@@ -9,16 +9,22 @@ st.set_page_config(
     layout="centered"
 )
 
-# Estilos visuales con PRECIO ENORME (90px) y botones ordenados
+# Estilos visuales con corrección de desborde y precio enorme (90px)
 st.markdown("""
     <style>
-    .main { background-color: #f8f9fa; }
+    /* Forzamos a que la aplicación no genere desborde horizontal en el celular */
+    .main, .block-container {
+        max-width: 100% !important;
+        padding-left: 10px !important;
+        padding-right: 10px !important;
+        overflow-x: hidden !important;
+    }
     .producto-card {
         background-color: white;
-        padding: 25px;
+        padding: 20px;
         border-radius: 16px;
         box-shadow: 0px 5px 15px rgba(0,0,0,0.08);
-        margin-bottom: 20px;
+        margin-bottom: 15px;
         border-left: 10px solid #2ecc71;
     }
     .precio-enorme {
@@ -37,6 +43,11 @@ st.markdown("""
         margin-bottom: 8px;
         border-left: 4px solid #bdc3c7;
         font-size: 14px;
+    }
+    /* Asegura que los componentes internos de Streamlit no se estiren de más */
+    div[data-testid="stVerticalBlock"] {
+        max-width: 100% !important;
+        overflow-x: hidden !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -90,7 +101,7 @@ if df is not None:
     with tab2:
         st.subheader("Lector Guiado por Botones")
         
-        # FILA DE BOTONES DE CONTROL DE LA CÁMARA (Nativos de Streamlit para máxima velocidad)
+        # FILA DE BOTONES DE CONTROL DE LA CÁMARA
         col_btn1, col_btn2 = st.columns(2)
         
         with col_btn1:
@@ -110,22 +121,23 @@ if df is not None:
 
         # Interfaz del visor si el usuario activó la cámara
         if st.session_state.camara_activa:
-            st.write("Alineá el código en cualquier ángulo dentro de la cruz y presioná el botón rojo inferior:")
+            st.write("Alineá el código en la cruz y presioná el botón rojo:")
             
-            # Pasamos una variable al HTML para indicarle que debe iniciar la cámara
+            # Ajustamos el HTML/CSS para que sea 100% responsivo y no se salga de la pantalla
             html_code = """
-            <div style="text-align: center; position: relative;">
-                <div id="interactive" class="viewport" style="width: 100%; max-width: 400px; height: 240px; border: 3px solid #3498db; border-radius: 12px; overflow: hidden; margin: 0 auto; background-color: #000; position: relative;">
-                    <video autoplay playsinline style="width: 100%; height: 100%; object-fit: cover;"></video>
+            <div style="width: 100%; max-width: 100%; box-sizing: border-box; text-align: center; padding: 0 5px; overflow: hidden;">
+                
+                <div id="interactive" class="viewport" style="width: 100%; max-width: 360px; height: 200px; border: 3px solid #3498db; border-radius: 12px; overflow: hidden; margin: 0 auto; background-color: #000; position: relative; box-sizing: border-box;">
+                    <video autoplay playsinline style="width: 100%; height: 100%; object-fit: cover; position: absolute; top:0; left:0;"></video>
                     <div style="position: absolute; top: 50%; left: 10%; width: 80%; height: 2px; background-color: #3498db; opacity: 0.5; pointer-events: none;"></div>
                     <div style="position: absolute; top: 10%; left: 50%; width: 2px; height: 80%; background-color: #3498db; opacity: 0.5; pointer-events: none;"></div>
                 </div>
                 
-                <button id="disparador" style="margin-top: 15px; padding: 14px 35px; font-size: 16px; font-weight: bold; color: white; background-color: #e74c3c; border: none; border-radius: 30px; box-shadow: 0px 4px 12px rgba(231,76,60,0.4); cursor: pointer; width: 90%; max-width: 350px;">
+                <button id="disparador" style="margin-top: 15px; padding: 14px 0; font-size: 16px; font-weight: bold; color: white; background-color: #e74c3c; border: none; border-radius: 30px; box-shadow: 0px 4px 12px rgba(231,76,60,0.4); cursor: pointer; width: 100%; max-width: 360px; box-sizing: border-box;">
                     📸 DISPARAR ESCÁNER
                 </button>
                 
-                <p id="resultado" style="font-weight: bold; color: #3498db; margin-top: 12px; font-size: 15px;">Visor listo. Gatillá para leer...</p>
+                <p id="resultado" style="font-weight: bold; color: #3498db; margin-top: 10px; font-size: 14px; margin-bottom: 5px;">Visor listo. Gatillá para leer...</p>
             </div>
             
             <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
@@ -154,8 +166,8 @@ if df is not None:
                     type: "LiveStream",
                     target: document.querySelector('#interactive'),
                     constraints: {
-                        width: { min: 1280, ideal: 1280 },
-                        height: { min: 720, ideal: 720 },
+                        width: { min: 640, ideal: 1280 },
+                        height: { min: 480, ideal: 720 },
                         facingMode: "environment",
                         focusMode: "continuous"
                     },
@@ -168,7 +180,7 @@ if df is not None:
                 locate: true
             }, function(err) {
                 if (err) {
-                    document.getElementById('resultado').innerText = "Error: Habilita los permisos de cámara en tu navegador.";
+                    document.getElementById('resultado').innerText = "Error: Habilita los permisos de cámara.";
                     document.getElementById('resultado').style.color = "red";
                     return;
                 }
@@ -209,14 +221,15 @@ if df is not None:
                 setTimeout(() => {
                     Quagga.offDetected(unaSolaLectura);
                     if (document.getElementById('resultado').innerText === "⚡ Analizando imagen...") {
-                        document.getElementById('resultado').innerText = "❌ No se leyó un código claro. Reenfocá y volvé a disparar.";
+                        document.getElementById('resultado').innerText = "❌ No se leyó. Reenfocá y volvé a disparar.";
                         document.getElementById('resultado').style.color = "#e74c3c";
                     }
                 }, 1300);
             });
             </script>
             """
-            components.html(html_code, height=330)
+            # Reducimos levemente el alto asignado al componente para que no sobre espacio abajo
+            components.html(html_code, height=295)
         else:
             st.info("💡 La cámara está apagada para ahorrar batería. Tocá el botón verde de arriba cuando quieras escanear.")
 
@@ -248,7 +261,7 @@ if df is not None:
                 cod_int_texto = str(fila['Codigo Interno']).split('.')[0] if '.' in str(fila['Codigo Interno']) and str(fila['Codigo Interno']).split('.')[1] == '0' else str(fila['Codigo Interno'])
                 scanner_texto = str(fila['codigoscanner']).split('.')[0] if '.' in str(fila['codigoscanner']) else str(fila['codigoscanner'])
                 
-                # Renderizado con el precio a tamaño 90px (Doble de grande)
+                # Renderizado Premium: El precio gigante (90px)
                 st.markdown(f"""
                 <div class="producto-card">
                     <h2 style='margin:0; color:#2c3e50; font-size:26px;'>{fila['Descripcion']}</h2>
