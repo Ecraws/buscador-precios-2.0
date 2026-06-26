@@ -1,117 +1,173 @@
 import streamlit as st
 import pandas as pd
 
-# Configuración de página optimizada para rendimiento móvil
+# Configuración de página optimizada para rendimiento y diseño móvil
 st.set_page_config(
-    page_title="Buscador de Precios Flash Pro", 
+    page_title="FlashPrice Neo", 
     page_icon="⚡", 
     layout="centered"
 )
 
-# Estilos CSS Avanzados (UI/UX Limpia, Tarjetas Premium y Precios Destacados)
+# --- ARQUITECTURA DE DISEÑO ULTRA-PREMIUM (CSS) ---
 st.markdown("""
     <style>
+    /* Configuración global y fondo oscuro profundo */
     .main, .block-container {
         max-width: 100% !important;
-        padding: 12px !important;
+        padding: 14px !important;
         overflow-x: hidden !important;
-        background-color: #fcfcfd;
+        background-color: #0b0f19 !important;
     }
     
-    /* Contenedor principal de la tarjeta de producto */
+    /* Cambiar el color de los títulos nativos de Streamlit a blanco */
+    h1, h2, h3, h4, p, label {
+        color: #ffffff !important;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+    }
+    
+    /* Input de texto ultra-moderno */
+    .stTextInput input {
+        background-color: #1e293b !important;
+        color: #ffffff !important;
+        border: 1px solid #334155 !important;
+        border-radius: 14px !important;
+        padding: 12px !important;
+        font-size: 16px !important;
+    }
+    .stTextInput input:focus {
+        border-color: #00f2fe !important;
+        box-shadow: 0 0 10px rgba(0, 242, 254, 0.2) !important;
+    }
+
+    /* Formulario contenedor estilizado */
+    div[data-testid="stForm"] {
+        padding: 16px !important;
+        border-radius: 20px !important;
+        background: rgba(30, 41, 59, 0.7) !important;
+        border: 1px solid rgba(255, 255, 255, 0.05) !important;
+        backdrop-filter: blur(10px) !important;
+        box-shadow: 0px 10px 30px rgba(0, 0, 0, 0.2) !important;
+    }
+    
+    /* Botón Principal Futurista */
+    .stButton button {
+        background: linear-gradient(135deg, #2ecc71 0%, #00f2fe 100%) !important;
+        color: #0b0f19 !important;
+        font-weight: 700 !important;
+        letter-spacing: 0.5px !important;
+        border-radius: 14px !important;
+        border: none !important;
+        padding: 12px !important;
+        font-size: 15px !important;
+        transition: all 0.3s ease !important;
+        box-shadow: 0px 4px 15px rgba(46, 204, 113, 0.3) !important;
+    }
+    
+    /* --- TARJETA DE PRODUCTO NEO-PREMIUM --- */
     .producto-card {
-        background-color: #ffffff;
-        padding: 20px;
-        border-radius: 16px;
-        box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.03), 0px 1px 3px rgba(0, 0, 0, 0.02);
-        margin-top: 14px;
-        margin-bottom: 14px;
-        border-left: 6px solid #2ecc71;
-        border-top: 1px solid #f1f2f6;
-        border-right: 1px solid #f1f2f6;
-        border-bottom: 1px solid #f1f2f6;
+        background: linear-gradient(135deg, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 0.95) 100%);
+        padding: 24px;
+        border-radius: 24px;
+        box-shadow: 0px 15px 35px rgba(0, 0, 0, 0.4);
+        margin-top: 16px;
+        margin-bottom: 16px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        position: relative;
+        overflow: hidden;
     }
     
-    /* Título del Producto (Descripción) */
-    .producto-titulo {
-        margin: 0 0 12px 0; 
-        color: #1e293b; 
-        font-size: 20px; 
-        font-weight: 700;
-        line-height: 1.3;
-    }
-    
-    /* Contenedor del Precio Destacado */
-    .precio-contenedor {
-        background-color: #f8fafc;
-        padding: 12px 16px;
-        border-radius: 12px;
-        display: inline-block;
+    /* Decoración de línea brillante superior */
+    .producto-card::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
         width: 100%;
-        box-sizing: border-box;
-        margin-bottom: 14px;
-        border: 1px solid #f1f5f9;
+        height: 4px;
+        background: linear-gradient(90deg, #2ecc71, #00f2fe);
+    }
+    
+    .producto-titulo {
+        margin: 0 0 14px 0 !important; 
+        color: #ffffff !important; 
+        font-size: 22px !important; 
+        font-weight: 800 !important;
+        line-height: 1.3;
+        letter-spacing: -0.5px;
+    }
+    
+    /* Contenedor e Impacto del Precio */
+    .precio-contenedor {
+        background: rgba(255, 255, 255, 0.03);
+        padding: 14px 18px;
+        border-radius: 16px;
+        margin-bottom: 18px;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        display: flex;
+        align-items: center;
     }
     
     .precio-enorme {
-        color: #2ecc71;
-        font-size: 52px;
+        background: linear-gradient(90deg, #2ecc71 0%, #00f2fe 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-size: 58px;
         font-weight: 900;
         line-height: 1;
         margin: 0;
-        letter-spacing: -1.5px;
+        letter-spacing: -2px;
         font-family: system-ui, -apple-system, sans-serif;
     }
     
-    /* Detalles Técnicos Estilizados */
-    .meta-grid {
+    /* Píldoras de información técnica modernas */
+    .meta-flex {
         display: flex;
         flex-direction: column;
-        gap: 6px;
-        font-family: system-ui, -apple-system, sans-serif;
+        gap: 8px;
     }
     
     .meta-item {
-        font-size: 13.5px;
-        color: #64748b;
-        line-height: 1.4;
+        font-size: 14px;
+        color: #94a3b8;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: rgba(255, 255, 255, 0.02);
+        padding: 8px 14px;
+        border-radius: 10px;
+        border: 1px solid rgba(255, 255, 255, 0.03);
     }
     
     .meta-label {
-        font-weight: 600;
-        color: #475569;
-        background-color: #f1f5f9;
-        padding: 2px 6px;
-        border-radius: 4px;
+        font-weight: 700;
+        color: #64748b;
         font-size: 11px;
         text-transform: uppercase;
-        margin-right: 6px;
-        display: inline-block;
-    }
-
-    .historial-item {
-        background-color: #ffffff;
-        padding: 12px 16px;
-        border-radius: 10px;
-        margin-bottom: 6px;
-        border-left: 4px solid #475569;
-        font-size: 14px;
-        box-shadow: 0px 2px 5px rgba(0,0,0,0.01);
+        letter-spacing: 0.5px;
     }
     
-    div[data-testid="stForm"] {
-        padding: 14px !important;
-        border-radius: 16px !important;
-        background-color: white !important;
-        border: 1px solid #e2e8f0 !important;
-        box-shadow: none !important;
+    .meta-valor {
+        color: #cbd5e1;
+        font-weight: 600;
+    }
+
+    /* Historial */
+    .historial-item {
+        background: rgba(30, 41, 59, 0.5);
+        padding: 12px 16px;
+        border-radius: 12px;
+        margin-bottom: 6px;
+        border-left: 4px solid #00f2fe;
+        font-size: 14px;
+        color: #e2e8f0;
     }
     </style>
 """, unsafe_allow_html=True)
 
-st.title("⚡ Buscador Flash Ultra")
+# Encabezado estilizado con emojis limpios
+st.markdown('<h1 style="text-align: center; font-size: 28px; font-weight: 800; background: linear-gradient(90deg, #ffffff, #94a3b8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 20px;">⚡ FLASHPRICE NEO</h1>', unsafe_allow_html=True)
 
-# Función optimizada para formatear precios sin centavos rotos y con puntos de miles locales
+# Función optimizada para formatear precios locales sin centavos rotos
 def formatear_precio(valor):
     try:
         entero = round(float(valor))
@@ -124,7 +180,6 @@ def formatear_precio(valor):
 def cargar_y_mapear_datos():
     try:
         df = pd.read_excel("productos.xlsx")
-        
         df['Descripcion_Clean'] = df['Descripcion'].astype(str).str.strip()
         df['Precio_Clean'] = df['Precio'].fillna(0)
         
@@ -148,7 +203,6 @@ def cargar_y_mapear_datos():
                 'sector': str(fila['Descrip Sector']).strip() if pd.notna(fila['Descrip Sector']) else 'N/A',
                 'scanner': scan_code
             }
-            
             if int_code and int_code != 'nan':
                 mapa_codigos[int_code] = prod_info
             if scan_code and scan_code != 'nan':
@@ -165,19 +219,15 @@ if df is not None:
     if 'historial' not in st.session_state:
         st.session_state.historial = []
 
-    # --- FORMULARIO DE ENTRADA ---
+    # --- FORMULARIO DE ENTRADA INDUSTRIAL ---
     with st.form(key="formulario_busqueda", clear_on_submit=False):
         busqueda = st.text_input(
-            "🔍 Ingresá Código o Nombre del Producto:", 
-            placeholder="Escribí aquí y presioná Enter o Buscar...",
+            "🔍 Buscar Producto:", 
+            placeholder="Escribí código o nombre aquí...",
             key="input_text"
         ).strip().lower()
         
-        bot_buscar = st.form_submit_button("🚀 BUSCAR PRECIO YA", use_container_width=True)
-
-    if busqueda:
-        if st.button("❌ LIMPIAR PANTALLA", use_container_width=True):
-            st.rerun()
+        bot_buscar = st.form_submit_button("CONSEGUIR PRECIO", use_container_width=True)
 
     # --- PROCESAMIENTO DE BÚSQUEDA ---
     if busqueda:
@@ -197,20 +247,20 @@ if df is not None:
                         'scanner': fila['cod_scanner_clean']
                     })
 
-        # --- MUESTRA DE RESULTADOS ---
+        # --- MOSTRAR RESULTADOS ---
         if resultados_lista:
             
-            # CONTROL DE HISTORIAL INTERACTIVO
-            st.markdown("### 📥 Guardar en Recientes:")
+            # CONTROL DE HISTORIAL INTERACTIVO ESTILIZADO
+            st.markdown('<p style="font-weight: 700; font-size: 15px; margin-top:20px; color:#94a3b8 !important;">📌 Guardar en Consultas Recientes:</p>', unsafe_allow_html=True)
             opciones_historial = [f"{p['desc']} ({formatear_precio(p['precio'])})" for p in resultados_lista]
             
             seleccion_prod = st.selectbox(
-                "Seleccioná qué producto agregar a tus últimas búsquedas:",
+                "Seleccioná para el historial:",
                 options=opciones_historial,
                 label_visibility="collapsed"
             )
             
-            if st.button("📌 AGREGAR A RECIENTES", use_container_width=True):
+            if st.button("REGISTRAR EN HISTORIAL", use_container_width=True):
                 if seleccion_prod:
                     idx = opciones_historial.index(seleccion_prod)
                     prod_elegido = resultados_lista[idx]
@@ -218,14 +268,14 @@ if df is not None:
                     
                     if not st.session_state.historial or st.session_state.historial[0] != item_historial:
                         st.session_state.historial.insert(0, item_historial)
-                        if len(st.session_state.historial) > 5:
+                        if len(st.session_state.historial) > 4:
                             st.session_state.historial.pop()
-                    st.success("¡Producto guardado en la lista!")
+                    st.success("¡Agregado con éxito!")
             
             st.write("---")
-            st.markdown(f"### 📦 Resultados ({len(resultados_lista)}):")
+            st.markdown(f'<h3 style="font-size:18px; font-weight:700; color:#94a3b8 !important;">📦 Productos Encontrados ({len(resultados_lista)}):</h3>', unsafe_allow_html=True)
             
-            # RENDERIZADO DE LAS NUEVAS TARJETAS LIMPIAS
+            # RENDERIZADO DE LAS TARJETAS PREMIUM
             for prod in resultados_lista:
                 precio_visual = formatear_precio(prod['precio'])
                 cod_int = prod['interno'] if prod['interno'] != 'nan' else 'N/A'
@@ -239,19 +289,28 @@ if df is not None:
                         <p class="precio-enorme">{precio_visual}</p>
                     </div>
                     
-                    <div class="meta-grid">
-                        <div class="meta-item"><span class="meta-label">Cód. Interno</span><span style="color:#334155;">{cod_int}</span></div>
-                        <div class="meta-item"><span class="meta-label">Sector</span><span style="color:#334155;">{prod['sector']}</span></div>
-                        <div class="meta-item"><span class="meta-label">Scanner / EAN</span><span style="color:#334155;">{cod_scan}</span></div>
+                    <div class="meta-flex">
+                        <div class="meta-item">
+                            <span class="meta-label">Código Interno</span>
+                            <span class="meta-valor">{cod_int}</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Sector</span>
+                            <span class="meta-valor">{prod['sector']}</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Scanner / EAN</span>
+                            <span class="meta-valor">{cod_scan}</span>
+                        </div>
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
         else:
-            st.warning(f"🔍 No se encontró ningún artículo para: '{busqueda}'.")
+            st.error(f"🔍 No se encontró ningún artículo para: '{busqueda}'.")
 
-    # --- HISTORIAL ---
+    # --- HISTORIAL RECIENTE NEO ---
     if st.session_state.historial:
         st.write("---")
-        st.subheader("📋 Últimas búsquedas guardadas:")
+        st.markdown('<h3 style="font-size:18px; font-weight:700; color:#94a3b8 !important;">📋 Últimas consultas:</h3>', unsafe_allow_html=True)
         for item in st.session_state.historial:
             st.markdown(f'<div class="historial-item">🔹 {item}</div>', unsafe_allow_html=True)
