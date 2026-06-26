@@ -19,11 +19,11 @@ st.markdown("""
         border-radius: 12px;
         box-shadow: 0px 4px 10px rgba(0,0,0,0.05);
         margin-bottom: 15px;
-        border-left: 6px solid #00b4d8;
+        border-left: 6px solid #2ecc71;
     }
     .precio-destacado {
         color: #2ecc71;
-        font-size: 28px;
+        font-size: 32px;
         font-weight: bold;
         margin: 5px 0;
     }
@@ -50,8 +50,7 @@ def cargar_datos():
 df = cargar_datos()
 
 if df is not None:
-    # Navegación por pestañas
-    tab1, tab2 = st.tabs(["🔍 Buscar Tipeando", "📷 Lector de Barras"])
+    tab1, tab2 = st.tabs(["🔍 Buscar Tipeando", "📷 Lector de Barras HD"])
     
     codigo_escaneado = ""
     
@@ -61,68 +60,85 @@ if df is not None:
         if busqueda_texto:
             codigo_escaneado = busqueda_texto
 
-    # --- PESTAÑA 2: CÁMARA ESCÁNER EN VIVO (QUAGGA JS) ---
+    # --- PESTAÑA 2: CÁMARA ESCÁNER EN VIVO OPTIMIZADO ---
     with tab2:
-        st.subheader("Escáner en Vivo")
-        st.write("Centrá el código de barras en la cámara trasera. Asegurá buena luz y que no esté borroso.")
+        st.subheader("Escáner de Alta Precisión")
+        st.write("Coloca el código horizontalmente en el centro del recuadro. Acerca o aleja lentamente para hacer foco.")
         
-        # Insertamos el escáner basado en QuaggaJS
         html_code = """
         <div style="text-align: center; position: relative;">
-            <div id="interactive" class="viewport" style="width: 100%; max-width: 400px; height: 250px; border: 2px solid #00b4d8; border-radius: 10px; overflow: hidden; margin: 0 auto; background-color: #000;">
+            <div id="interactive" class="viewport" style="width: 100%; max-width: 400px; height: 250px; border: 3px solid #2ecc71; border-radius: 12px; overflow: hidden; margin: 0 auto; background-color: #000; position: relative;">
                 <video autoplay playsinline style="width: 100%; height: 100%; object-fit: cover;"></video>
+                <div style="position: absolute; top: 50%; left: 5%; width: 90%; height: 2px; background-color: red; opacity: 0.6; pointer-events: none;"></div>
             </div>
-            <p id="resultado" style="font-weight: bold; color: #00b4d8; margin-top: 10px;">Escaneando activamente...</p>
+            <p id="resultado" style="font-weight: bold; color: #2ecc71; margin-top: 10px; font-size: 16px;">Cámara lista. Escaneando...</p>
         </div>
         
         <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
         
         <script>
-        // Configuración e inicio de QuaggaJS
+        let ultimoCodigo = "";
+        let tiempoBloqueo = 0;
+
         Quagga.init({
             inputStream: {
                 name: "Live",
                 type: "LiveStream",
                 target: document.querySelector('#interactive'),
                 constraints: {
-                    width: 640,
-                    height: 480,
-                    facingMode: "environment" // Fuerza el uso de la cámara trasera
+                    // Maximizamos la resolución a HD para que distinga líneas finas de EAN-13 y EAN-8
+                    width: { min: 1280, ideal: 1280 },
+                    height: { min: 720, ideal: 720 },
+                    facingMode: "environment",
+                    focusMode: "continuous" // Fuerza el autofoco continuo en celulares compatibles
                 },
             },
-            decoder: {
-                // Tipos de códigos de barra comerciales más comunes (EAN, Code 128, etc)
-                readers: ["ean_reader", "ean_8_reader", "code_128_reader", "code_39_reader", "upc_reader"]
+            locator: {
+                patchSize: "medium", // Tamaño de parche optimizado para EAN comerciales
+                halfSample: false     // No reduce la imagen a la mitad para no perder nitidez
             },
-            locate: true // Ayuda a localizar las líneas del código en la imagen
+            decoder: {
+                // Enfocado estrictamente en tus formatos solicitados para no saturar la memoria
+                readers: ["ean_reader", "ean_8_reader", "code_128_reader"]
+            },
+            locate: true
         }, function(err) {
             if (err) {
-                document.getElementById('resultado').innerText = "Error al iniciar la cámara trasera.";
+                document.getElementById('resultado').innerText = "Error: Permite el acceso a la cámara trasera.";
+                document.getElementById('resultado').style.color = "red";
                 console.error(err);
                 return;
             }
             Quagga.start();
         });
 
-        // Escucha cuando detecta un código con éxito
         Quagga.onDetected(function(data) {
+            const ahora = Date.now();
+            
+            // FILTRO DE SEGURIDAD ANTIBUCLE: 
+            // Si leyó un código hace menos de 3 segundos, ignora la lectura para que no se tilde la app
+            if (ahora < tiempoBloqueo) {
+                return; 
+            }
+
             if (data.codeResult && data.codeResult.code) {
                 const codigo = data.codeResult.code;
-                document.getElementById('resultado').innerText = "¡Código Detectado!: " + codigo;
                 
-                // Enviamos el código de barras de vuelta a Streamlit
-                window.parent.postMessage({
-                    type: 'streamlit:set_widget_value',
-                    key: 'barcode_detected',
-                    value: codigo
-                }, '*');
-                
-                // Feedback táctil (vibración) si el celular lo permite
-                if (navigator.vibrate) navigator.vibrate(150);
-                
-                // Frenamos el escáner un segundo para evitar lecturas repetidas en bucle
-                Quagga.stop();
-                setTimeout(function(){ Quagga.start(); }, 2000);
+                // Validación básica de códigos de barras comerciales (mínimo 5 dígitos)
+                if(codigo.length >= 5) {
+                    tiempoBloqueo = ahora + 3000; // Bloquea nuevas lecturas por 3 segundos
+                    
+                    document.getElementById('resultado').innerText = "¡Código Detectado!: " + codigo;
+                    
+                    // Envía el código de forma limpia a Streamlit una única vez
+                    window.parent.postMessage({
+                        type: 'streamlit:set_widget_value',
+                        key: 'barcode_detected',
+                        value: codigo
+                    }, '*');
+                    
+                    if (navigator.vibrate) navigator.vibrate(200);
+                }
             }
         });
         </script>
@@ -131,12 +147,15 @@ if df is not None:
         # Renderizamos el componente en la app
         components.html(html_code, height=310)
         
-        # Recibimos el código que descubrió QuaggaJS
+        # Recibimos el código desde JavaScript sin saturar el estado de Streamlit
         if 'barcode_detected' in st.session_state and st.session_state.barcode_detected:
             codigo_escaneado = str(st.session_state.barcode_detected).strip().lower()
-            st.success(f"Código detectado: {codigo_escaneado}")
+            # Mostramos un botón para limpiar el escáner si queremos buscar otra cosa
+            if st.button("🔄 Limpiar / Escanear otro"):
+                st.session_state.barcode_detected = ""
+                st.rerun()
 
-    # --- PROCESAMIENTO DE RESULTADOS ---
+    # --- PROCESAMIENTO Y MUESTRA DE RESULTADOS ---
     if codigo_escaneado:
         resultados = df[
             df['desc_busqueda'].str.contains(codigo_escaneado, na=False) | 
@@ -145,7 +164,7 @@ if df is not None:
         ]
         
         if not resultados.empty:
-            st.markdown(f"### 📦 Resultados para: '{codigo_escaneado}'")
+            st.markdown(f"### 📦 Producto Encontrado:")
             
             for index, fila in resultados.iterrows():
                 cod_int_texto = str(fila['Codigo Interno']).split('.')[0] if '.' in str(fila['Codigo Interno']) and str(fila['Codigo Interno']).split('.')[1] == '0' else str(fila['Codigo Interno'])
@@ -153,7 +172,7 @@ if df is not None:
                 
                 st.markdown(f"""
                 <div class="producto-card">
-                    <h2 style='margin:0; color:#2c3e50; font-size:20px;'>{fila['Descripcion']}</h2>
+                    <h2 style='margin:0; color:#2c3e50; font-size:22px;'>{fila['Descripcion']}</h2>
                     <p class="precio-destacado">💰 ${fila['Precio']:,}</p>
                     <p style='margin:0; color:#7f8c8d; font-size:14px; line-height: 1.6;'>
                         🔢 <b>Cód. Interno:</b> {cod_int_texto if pd.notna(fila['Codigo Interno']) else 'N/A'}<br>
@@ -163,4 +182,4 @@ if df is not None:
                 </div>
                 """, unsafe_allow_html=True)
         else:
-            st.warning(f"🔍 No se encontró ningún producto que coincida con '{codigo_escaneado}'.")
+            st.warning(f"🔍 El código '{codigo_escaneado}' no está registrado en el Excel.")
