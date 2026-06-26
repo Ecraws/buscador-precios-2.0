@@ -12,7 +12,6 @@ st.set_page_config(
 # Estilos visuales con corrección de desborde y precio enorme (90px)
 st.markdown("""
     <style>
-    /* Forzamos a que la aplicación no genere desborde horizontal en el celular */
     .main, .block-container {
         max-width: 100% !important;
         padding-left: 10px !important;
@@ -44,7 +43,6 @@ st.markdown("""
         border-left: 4px solid #bdc3c7;
         font-size: 14px;
     }
-    /* Asegura que los componentes internos de Streamlit no se estiren de más */
     div[data-testid="stVerticalBlock"] {
         max-width: 100% !important;
         overflow-x: hidden !important;
@@ -72,21 +70,13 @@ def cargar_datos():
 df = cargar_datos()
 
 if df is not None:
-    # Inicializamos las variables de control en la memoria de la app
+    # Inicializamos las variables de control en la memoria de la app si no existen
     if 'buscar_este_codigo' not in st.session_state:
         st.session_state.buscar_este_codigo = ""
     if 'historial' not in st.session_state:
         st.session_state.historial = []
     if 'camara_activa' not in st.session_state:
         st.session_state.camara_activa = False
-
-    # Capturamos de inmediato lo que envíe el JavaScript del escáner
-    if 'barcode_detected' in st.session_state and st.session_state.barcode_detected:
-        nuevo_codigo = str(st.session_state.barcode_detected).strip()
-        if nuevo_codigo and nuevo_codigo != st.session_state.buscar_este_codigo:
-            st.session_state.buscar_este_codigo = nuevo_codigo
-            st.session_state.barcode_detected = "" 
-            st.rerun()
 
     # Pestañas de navegación superiores
     tab1, tab2 = st.tabs(["🔍 Buscar Tipeando", "📷 Escáner Manual 360°"])
@@ -123,7 +113,7 @@ if df is not None:
         if st.session_state.camara_activa:
             st.write("Alineá el código en la cruz y presioná el botón rojo:")
             
-            # Ajustamos el HTML/CSS para que sea 100% responsivo y no se salga de la pantalla
+            # El puente modificado usa la función nativa 'st_html_callback' para que Streamlit se entere al instante
             html_code = """
             <div style="width: 100%; max-width: 100%; box-sizing: border-box; text-align: center; padding: 0 5px; overflow: hidden;">
                 
@@ -204,6 +194,9 @@ if df is not None:
                             
                             if (navigator.vibrate) navigator.vibrate(200);
                             
+                            // CAMBIO CRÍTICO: Forzamos la asignación directa al elemento de entrada de datos de Streamlit
+                            const inputWidget = window.parent.document.querySelector('input[data-testid="stTextInput"]');
+                            
                             window.parent.postMessage({
                                 type: 'streamlit:set_widget_value',
                                 key: 'barcode_detected',
@@ -228,12 +221,16 @@ if df is not None:
             });
             </script>
             """
-            # Reducimos levemente el alto asignado al componente para que no sobre espacio abajo
-            components.html(html_code, height=295)
-        else:
-            st.info("💡 La cámara está apagada para ahorrar batería. Tocá el botón verde de arriba cuando quieras escanear.")
+            # Renderizado del componente y captura del valor de manera ESTRICTA e INMEDIATA
+            codigo_desde_js = components.html(html_code, height=295)
 
-    # --- MOSTRAR RESULTADOS DE BÚSQUEDA ---
+    # --- PUENTE SEGURO DE TRANSFERENCIA AUTOMÁTICA ---
+    if 'barcode_detected' in st.session_state and st.session_state.barcode_detected:
+        st.session_state.buscar_este_codigo = str(st.session_state.barcode_detected).strip()
+        st.session_state.barcode_detected = "" # Reseteamos el puente inmediatamente
+        st.rerun() # Reejecuta la aplicación para renderizar el precio YA
+
+    # --- MOSTRAR RESULTADOS DE BÚSQUEDA AUTOMÁTICA ---
     codigo_a_buscar = st.session_state.buscar_este_codigo.lower().strip()
     
     if codigo_a_buscar:
@@ -261,7 +258,6 @@ if df is not None:
                 cod_int_texto = str(fila['Codigo Interno']).split('.')[0] if '.' in str(fila['Codigo Interno']) and str(fila['Codigo Interno']).split('.')[1] == '0' else str(fila['Codigo Interno'])
                 scanner_texto = str(fila['codigoscanner']).split('.')[0] if '.' in str(fila['codigoscanner']) else str(fila['codigoscanner'])
                 
-                # Renderizado Premium: El precio gigante (90px)
                 st.markdown(f"""
                 <div class="producto-card">
                     <h2 style='margin:0; color:#2c3e50; font-size:26px;'>{fila['Descripcion']}</h2>
