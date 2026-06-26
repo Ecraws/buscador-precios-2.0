@@ -9,7 +9,7 @@ st.set_page_config(
     layout="centered"
 )
 
-# Estilos visuales de la aplicación (Tarjetas de productos modernas)
+# Estilos visuales de la aplicación
 st.markdown("""
     <style>
     .main { background-color: #f4f6f9; }
@@ -51,7 +51,7 @@ df = cargar_datos()
 
 if df is not None:
     # Navegación por pestañas
-    tab1, tab2 = st.tabs(["🔍 Buscar Tipeando", "📷 Escáner en Vivo"])
+    tab1, tab2 = st.tabs(["🔍 Buscar Tipeando", "📷 Lector de Barras"])
     
     codigo_escaneado = ""
     
@@ -61,76 +61,80 @@ if df is not None:
         if busqueda_texto:
             codigo_escaneado = busqueda_texto
 
-    # --- PESTAÑA 2: CÁMARA ESCÁNER EN VIVO ---
+    # --- PESTAÑA 2: CÁMARA ESCÁNER EN VIVO (QUAGGA JS) ---
     with tab2:
-        st.subheader("Escáner de Código de Barras")
-        st.write("Apunta la cámara hacia el código de barras del producto.")
+        st.subheader("Escáner en Vivo")
+        st.write("Centrá el código de barras en la cámara trasera. Asegurá buena luz y que no esté borroso.")
         
-        # Usamos un componente HTML5/JavaScript para activar la cámara en modo video continuo
-        # Este script utiliza la API nativa BarcodeDetector admitida por la mayoría de celulares modernos
+        # Insertamos el escáner basado en QuaggaJS
         html_code = """
-        <div style="text-align: center;">
-            <video id="video" width="100%" height="auto" style="border: 2px solid #00b4d8; border-radius: 10px; max-width: 400px;" autoplay playsinline></video>
-            <p id="resultado" style="font-weight: bold; color: #00b4d8; margin-top: 10px;">Buscando código de barras...</p>
+        <div style="text-align: center; position: relative;">
+            <div id="interactive" class="viewport" style="width: 100%; max-width: 400px; height: 250px; border: 2px solid #00b4d8; border-radius: 10px; overflow: hidden; margin: 0 auto; background-color: #000;">
+                <video autoplay playsinline style="width: 100%; height: 100%; object-fit: cover;"></video>
+            </div>
+            <p id="resultado" style="font-weight: bold; color: #00b4d8; margin-top: 10px;">Escaneando activamente...</p>
         </div>
         
-        <script>
-        const video = document.getElementById('video');
-        const resultadoText = document.getElementById('resultado');
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
         
-        // Activar la cámara trasera del celular
-        navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
-            .then(stream => {
-                video.srcObject = stream;
-            })
-            .catch(err => {
-                resultadoText.innerText = "Error al acceder a la cámara trasera.";
+        <script>
+        // Configuración e inicio de QuaggaJS
+        Quagga.init({
+            inputStream: {
+                name: "Live",
+                type: "LiveStream",
+                target: document.querySelector('#interactive'),
+                constraints: {
+                    width: 640,
+                    height: 480,
+                    facingMode: "environment" // Fuerza el uso de la cámara trasera
+                },
+            },
+            decoder: {
+                // Tipos de códigos de barra comerciales más comunes (EAN, Code 128, etc)
+                readers: ["ean_reader", "ean_8_reader", "code_128_reader", "code_39_reader", "upc_reader"]
+            },
+            locate: true // Ayuda a localizar las líneas del código en la imagen
+        }, function(err) {
+            if (err) {
+                document.getElementById('resultado').innerText = "Error al iniciar la cámara trasera.";
                 console.error(err);
-            });
-
-        // Verificar si el navegador soporta el detector de códigos de barras nativo
-        if ('BarcodeDetector' in window) {
-            const barcodeDetector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'code_128', 'code_39', 'upc_a'] });
-            
-            async function detectar() {
-                try {
-                    const barcodes = await barcodeDetector.detect(video);
-                    if (barcodes.length > 0) {
-                        const rawCode = barcodes[0].rawValue;
-                        resultadoText.innerText = "¡Código Detectado!: " + rawCode;
-                        
-                        // Enviamos el código detectado de vuelta a Streamlit
-                        window.parent.postMessage({
-                            type: 'streamlit:set_widget_value',
-                            key: 'barcode_detected',
-                            value: rawCode
-                        }, '*');
-                        
-                        // Pequeña vibración de éxito (si el dispositivo lo soporta)
-                        if (navigator.vibrate) navigator.vibrate(200);
-                    }
-                } catch (error) {
-                    console.error(error);
-                }
-                requestAnimationFrame(detectar);
+                return;
             }
-            
-            video.addEventListener('play', () => {
-                requestAnimationFrame(detectar);
-            });
-        } else {
-            resultadoText.innerHTML = "⚠️ Tu navegador no soporta el escáner continuo directo.<br><small>Usa la pestaña 'Buscar Tipeando' e inicia el escáner integrado de tu teclado.</small>";
-        }
+            Quagga.start();
+        });
+
+        // Escucha cuando detecta un código con éxito
+        Quagga.onDetected(function(data) {
+            if (data.codeResult && data.codeResult.code) {
+                const codigo = data.codeResult.code;
+                document.getElementById('resultado').innerText = "¡Código Detectado!: " + codigo;
+                
+                // Enviamos el código de barras de vuelta a Streamlit
+                window.parent.postMessage({
+                    type: 'streamlit:set_widget_value',
+                    key: 'barcode_detected',
+                    value: codigo
+                }, '*');
+                
+                // Feedback táctil (vibración) si el celular lo permite
+                if (navigator.vibrate) navigator.vibrate(150);
+                
+                // Frenamos el escáner un segundo para evitar lecturas repetidas en bucle
+                Quagga.stop();
+                setTimeout(function(){ Quagga.start(); }, 2000);
+            }
+        });
         </script>
         """
         
-        # Renderizamos el escáner de video en la pantalla del celular
-        components.html(html_code, height=320)
+        # Renderizamos el componente en la app
+        components.html(html_code, height=310)
         
-        # Capturamos el valor que el JavaScript nos envía cuando detecta un código
+        # Recibimos el código que descubrió QuaggaJS
         if 'barcode_detected' in st.session_state and st.session_state.barcode_detected:
             codigo_escaneado = str(st.session_state.barcode_detected).strip().lower()
-            st.success(f"Buscando automáticamente: {codigo_escaneado}")
+            st.success(f"Código detectado: {codigo_escaneado}")
 
     # --- PROCESAMIENTO DE RESULTADOS ---
     if codigo_escaneado:
