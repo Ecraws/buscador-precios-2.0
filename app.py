@@ -3,12 +3,12 @@ import pandas as pd
 
 # Configuración de página optimizada para rendimiento móvil
 st.set_page_config(
-    page_title="Buscador de Precios Flash", 
+    page_title="Buscador de Precios Flash Pro", 
     page_icon="⚡", 
     layout="centered"
 )
 
-# Estilos CSS optimizados (Diseño ultraliviano, sin animaciones pesadas)
+# Estilos CSS Avanzados (Cartas estilizadas, precios corregidos y limpios)
 st.markdown("""
     <style>
     .main, .block-container {
@@ -19,53 +19,62 @@ st.markdown("""
     }
     .producto-card {
         background-color: white;
-        padding: 20px;
-        border-radius: 16px;
-        box-shadow: 0px 4px 15px rgba(0,0,0,0.04);
-        margin-top: 15px;
-        margin-bottom: 15px;
+        padding: 22px;
+        border-radius: 18px;
+        box-shadow: 0px 5px 20px rgba(0,0,0,0.04);
+        margin-top: 12px;
+        margin-bottom: 12px;
         border-left: 12px solid #2ecc71;
     }
     .precio-enorme {
         color: #2ecc71;
-        font-size: 95px;
+        font-size: 65px;
         font-weight: 900;
-        line-height: 0.85;
-        margin: 15px 0 10px 0;
-        letter-spacing: -3px;
-        font-family: Arial, sans-serif;
+        line-height: 1.0;
+        margin: 10px 0;
+        letter-spacing: -2px;
+        font-family: 'Arial Black', sans-serif;
     }
     .historial-item {
         background-color: #ffffff;
-        padding: 10px 14px;
-        border-radius: 8px;
+        padding: 12px 16px;
+        border-radius: 10px;
         margin-bottom: 6px;
         border-left: 5px solid #34495e;
-        font-size: 13px;
+        font-size: 14px;
+        box-shadow: 0px 2px 5px rgba(0,0,0,0.02);
     }
-    /* Estilo compacto para el formulario de entrada */
     div[data-testid="stForm"] {
         padding: 12px !important;
         border-radius: 14px !important;
         background-color: white !important;
-        box-shadow: 0px 2px 10px rgba(0,0,0,0.02) !important;
+        box-shadow: 0px 2px 10px rgba(0,0,0,0.01) !important;
     }
     </style>
 """, unsafe_allow_html=True)
 
 st.title("⚡ Buscador Flash Ultra")
 
-# Motor de indexación instantánea (Carga una sola vez y crea mapas de búsqueda rápidos)
+# Función optimizada para formatear precios sin centavos rotos y con puntos de miles locales
+def formatear_precio(valor):
+    try:
+        # Redondeamos a entero para eliminar centavos raros (.043, .81)
+        entero = round(float(valor))
+        return f"${entero:,.0f}".replace(",", ".")
+    except:
+        return f"${valor}"
+
+# Motor de indexación instantánea en memoria
 @st.cache_data(show_spinner=False)
 def cargar_y_mapear_datos():
     try:
         df = pd.read_excel("productos.xlsx")
         
-        # Limpieza estricta de datos básios
+        # Limpieza base de campos
         df['Descripcion_Clean'] = df['Descripcion'].astype(str).str.strip()
         df['Precio_Clean'] = df['Precio'].fillna(0)
         
-        # Formateo rápido de códigos para evitar decimales ocultos (.0)
+        # Formateo de códigos evitando flotantes (.0)
         df['cod_interno_clean'] = df['Codigo Interno'].astype(str).apply(
             lambda x: x.split('.')[0] if '.' in x and x.split('.')[1] == '0' else x
         ).str.strip().str.lower()
@@ -74,10 +83,8 @@ def cargar_y_mapear_datos():
             lambda x: x.split('.')[0] if '.' in x else x
         ).str.strip().str.lower()
         
-        # Creamos mapas de búsqueda directa (Indices en memoria O(1))
+        # Diccionario para búsquedas O(1) de códigos exactos
         mapa_codigos = {}
-        
-        # Mapeamos primero por código interno
         for _, fila in df.iterrows():
             int_code = fila['cod_interno_clean']
             scan_code = fila['cod_scanner_clean']
@@ -97,46 +104,42 @@ def cargar_y_mapear_datos():
                 
         return df, mapa_codigos
     except Exception as e:
-        st.error("⚠️ Error al procesar 'productos.xlsx'. Asegúrate de que esté en la raíz de tu GitHub.")
+        st.error("⚠️ Error crítico: Verifica 'productos.xlsx' en la raíz de tu GitHub.")
         return None, None
 
 df, mapa_rapido = cargar_y_mapear_datos()
 
 if df is not None:
-    # Inicialización del historial
+    # Gestión del historial en sesión
     if 'historial' not in st.session_state:
         st.session_state.historial = []
 
-    # --- FORMULARIO DE CONSULTA INSTANTÁNEA ---
+    # --- FORMULARIO DE ENTRADA DIGITAL ---
     with st.form(key="formulario_busqueda", clear_on_submit=False):
         busqueda = st.text_input(
-            "🔍 Ingresá Código (Scanner o Interno) o Texto:", 
-            placeholder="Escribí y presioná Ir / Enter...",
+            "🔍 Ingresá Código o Nombre del Producto:", 
+            placeholder="Escribí aquí y presioná Enter o Buscar...",
             key="input_text"
         ).strip().lower()
         
-        # Botón de ejecución optimizado de ancho completo
         bot_buscar = st.form_submit_button("🚀 BUSCAR PRECIO YA", use_container_width=True)
 
-    # Botón secundario para limpiar rápido si ya hay algo en pantalla
     if busqueda:
         if st.button("❌ LIMPIAR PANTALLA", use_container_width=True):
             st.rerun()
 
-    # --- PROCESADOR ULTRA VELOZ ---
+    # --- PROCESAMIENTO LOGÍSTICO DE BÚSQUEDA ---
     if busqueda:
-        producto_encontrado = None
+        resultados_lista = []
         
-        # INTENTO 1: Búsqueda exacta y directa en el mapa de memoria (Cero milisegundos)
+        # Intento 1: Mapeo directo por código de barra o interno
         if busqueda in mapa_rapido:
-            producto_encontrado = mapa_rapido[busqueda]
-            resultados_lista = [producto_encontrado]
+            resultados_lista.append(mapa_rapido[busqueda])
         else:
-            # INTENTO 2: Si no es un código exacto, busca por texto en las descripciones (Plan B)
+            # Intento 2: Filtrado por texto si no es un código numérico exacto
             res_df = df[df['Descripcion_Clean'].str.lower().str.contains(busqueda, na=False)]
             if not res_df.empty:
-                resultados_lista = []
-                for _, fila in res_df.head(3).iterrows(): # Limitamos a los 3 mejores para no congelar el celular
+                for _, fila in res_df.iterrows():
                     resultados_lista.append({
                         'desc': fila['Descripcion_Clean'],
                         'precio': fila['Precio_Clean'],
@@ -144,27 +147,47 @@ if df is not None:
                         'sector': str(fila['Descrip Sector']).strip() if pd.notna(fila['Descrip Sector']) else 'N/A',
                         'scanner': fila['cod_scanner_clean']
                     })
-            else:
-                resultados_lista = []
 
-        # --- MOSTRAR RESULTADOS ---
+        # --- DESPLIEGUE DE RESULTADOS Y CARTAS ---
         if resultados_lista:
-            # Historial ultra rápido
-            primer_item = resultados_lista[0]
-            item_historial = f"{primer_item['desc']} - **${primer_item['precio']:,}**"
-            if not st.session_state.historial or st.session_state.historial[0] != item_historial:
-                st.session_state.historial.insert(0, item_historial)
-                if len(st.session_state.historial) > 4:
-                    st.session_state.historial.pop()
-
-            st.markdown("### 📦 Producto Encontrado:")
             
+            # CONTROL INTERACTIVO DE HISTORIAL: Si hay múltiples resultados, dejamos que el usuario elija
+            st.markdown("### 📥 Guardar en Recientes:")
+            opciones_historial = [f"{p['desc']} ({formatear_precio(p['precio'])})" for p in resultados_lista]
+            
+            # Selector inteligente para decidir qué mandar al historial
+            seleccion_prod = st.selectbox(
+                "Seleccioná qué producto agregar a tus últimas búsquedas:",
+                options=opciones_historial,
+                key="selector_historial"
+            )
+            
+            # Botón de confirmación manual para agregar al historial
+            if st.button("📌 AGREGAR A RECIENTES", use_container_width=True):
+                if seleccion_prod:
+                    # Buscamos el elemento correspondiente en la lista
+                    idx = opciones_historial.index(seleccion_prod)
+                    prod_elegido = resultados_lista[idx]
+                    item_historial = f"{prod_elegido['desc']} - **{formatear_precio(prod_elegido['precio'])}**"
+                    
+                    if not st.session_state.historial or st.session_state.historial[0] != item_historial:
+                        st.session_state.historial.insert(0, item_historial)
+                        if len(st.session_state.historial) > 5:
+                            st.session_state.historial.pop()
+                    st.success("¡Producto guardado en la lista de abajo!")
+            
+            st.write("---")
+            st.markdown(f"### 📦 Productos Encontrados ({len(resultados_lista)}):")
+            
+            # Renderizado individual de las cartas mejoradas
             for prod in resultados_lista:
+                precio_visual = formatear_precio(prod['precio'])
+                
                 st.markdown(f"""
                 <div class="producto-card">
-                    <h2 style='margin:0; color:#2c3e50; font-size:24px; font-weight:700;'>{prod['desc']}</h2>
-                    <p class="precio-enorme">💰 ${prod['precio']:,}</p>
-                    <p style='margin:0; color:#7f8c8d; font-size:15px; line-height: 1.6; border-top: 1px solid #eee; padding-top: 12px; margin-top: 5px;'>
+                    <h2 style='margin:0; color:#2c3e50; font-size:22px; font-weight:700;'>{prod['desc']}</h2>
+                    <p class="precio-enorme">💰 {precio_visual}</p>
+                    <p style='margin:0; color:#7f8c8d; font-size:14px; line-height: 1.6; border-top: 1px solid #eee; padding-top: 10px; margin-top: 5px;'>
                         🔢 <b>Cód. Interno:</b> <span style="color:#2c3e50;">{prod['interno'] if prod['interno'] != 'nan' else 'N/A'}</span><br>
                         📁 <b>Sector:</b> <span style="color:#2c3e50;">{prod['sector']}</span><br>
                         🏷️ <b>Scanner / EAN:</b> <span style="color:#2c3e50;">{prod['scanner'] if prod['scanner'] != 'nan' else 'N/A'}</span>
@@ -172,11 +195,11 @@ if df is not None:
                 </div>
                 """, unsafe_allow_html=True)
         else:
-            st.warning(f"🔍 No se encontró nada para: '{busqueda}'.")
+            st.warning(f"🔍 No se encontró ningún artículo para: '{busqueda}'.")
 
-    # --- HISTORIAL RECIENTE ---
+    # --- HISTORIAL DE ÚLTIMAS BÚSQUEDAS ---
     if st.session_state.historial:
         st.write("---")
-        st.subheader("📋 Últimas búsquedas:")
+        st.subheader("📋 Últimas búsquedas guardadas:")
         for item in st.session_state.historial:
             st.markdown(f'<div class="historial-item">🔹 {item}</div>', unsafe_allow_html=True)
