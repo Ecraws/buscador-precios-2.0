@@ -9,7 +9,7 @@ st.set_page_config(
     layout="centered"
 )
 
-# Estilos visuales con PRECIO EL DOBLE DE GRANDE (90px)
+# Estilos visuales con PRECIO ENORME (90px) y botones ordenados
 st.markdown("""
     <style>
     .main { background-color: #f8f9fa; }
@@ -23,7 +23,7 @@ st.markdown("""
     }
     .precio-enorme {
         color: #2ecc71;
-        font-size: 90px; /* <-- EL DOBLE DE GRANDE */
+        font-size: 90px;
         font-weight: 900;
         line-height: 1.0;
         margin: 15px 0;
@@ -61,13 +61,15 @@ def cargar_datos():
 df = cargar_datos()
 
 if df is not None:
-    # Inicializamos la memoria de la aplicación
+    # Inicializamos las variables de control en la memoria de la app
     if 'buscar_este_codigo' not in st.session_state:
         st.session_state.buscar_este_codigo = ""
     if 'historial' not in st.session_state:
         st.session_state.historial = []
+    if 'camara_activa' not in st.session_state:
+        st.session_state.camara_activa = False
 
-    # Capturamos lo que envíe el JavaScript de la cámara
+    # Capturamos de inmediato lo que envíe el JavaScript del escáner
     if 'barcode_detected' in st.session_state and st.session_state.barcode_detected:
         nuevo_codigo = str(st.session_state.barcode_detected).strip()
         if nuevo_codigo and nuevo_codigo != st.session_state.buscar_este_codigo:
@@ -84,17 +86,33 @@ if df is not None:
         if busqueda_texto:
             st.session_state.buscar_este_codigo = busqueda_texto
 
-    # --- PESTAÑA 2: CÁMARA ESCÁNER CON DISPARADOR MANUAL ---
+    # --- PESTAÑA 2: CÁMARA ESCÁNER CON CONTROL TOTAL ---
     with tab2:
-        if st.session_state.buscar_este_codigo:
-            st.write("✨ ¡Código procesado!")
-            if st.button("📷 Volver a encender cámara", type="primary"):
+        st.subheader("Lector Guiado por Botones")
+        
+        # FILA DE BOTONES DE CONTROL DE LA CÁMARA (Nativos de Streamlit para máxima velocidad)
+        col_btn1, col_btn2 = st.columns(2)
+        
+        with col_btn1:
+            if st.session_state.camara_activa:
+                if st.button("🔴 APAGAR CÁMARA", use_container_width=True):
+                    st.session_state.camara_activa = False
+                    st.rerun()
+            else:
+                if st.button("🟢 ACTIVAR CÁMARA", type="primary", use_container_width=True):
+                    st.session_state.camara_activa = True
+                    st.rerun()
+                    
+        with col_btn2:
+            if st.button("❌ LIMPIAR CÓDIGO", use_container_width=True):
                 st.session_state.buscar_este_codigo = ""
                 st.rerun()
-        else:
-            st.subheader("Lector Guiado por Botón")
-            st.write("Apunta al código (cualquier ángulo) y cuando lo veas nítido, presiona el botón rojo.")
+
+        # Interfaz del visor si el usuario activó la cámara
+        if st.session_state.camara_activa:
+            st.write("Alineá el código en cualquier ángulo dentro de la cruz y presioná el botón rojo inferior:")
             
+            # Pasamos una variable al HTML para indicarle que debe iniciar la cámara
             html_code = """
             <div style="text-align: center; position: relative;">
                 <div id="interactive" class="viewport" style="width: 100%; max-width: 400px; height: 240px; border: 3px solid #3498db; border-radius: 12px; overflow: hidden; margin: 0 auto; background-color: #000; position: relative;">
@@ -103,11 +121,11 @@ if df is not None:
                     <div style="position: absolute; top: 10%; left: 50%; width: 2px; height: 80%; background-color: #3498db; opacity: 0.5; pointer-events: none;"></div>
                 </div>
                 
-                <button id="disparador" style="margin-top: 15px; padding: 12px 30px; font-size: 16px; font-weight: bold; color: white; background-color: #e74c3c; border: none; border-radius: 30px; box-shadow: 0px 4px 10px rgba(231,76,60,0.4); cursor: pointer;">
-                    🔴 DISPARAR ESCÁNER
+                <button id="disparador" style="margin-top: 15px; padding: 14px 35px; font-size: 16px; font-weight: bold; color: white; background-color: #e74c3c; border: none; border-radius: 30px; box-shadow: 0px 4px 12px rgba(231,76,60,0.4); cursor: pointer; width: 90%; max-width: 350px;">
+                    📸 DISPARAR ESCÁNER
                 </button>
                 
-                <p id="resultado" style="font-weight: bold; color: #3498db; margin-top: 12px; font-size: 15px;">Alinea el producto y gatilla...</p>
+                <p id="resultado" style="font-weight: bold; color: #3498db; margin-top: 12px; font-size: 15px;">Visor listo. Gatillá para leer...</p>
             </div>
             
             <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
@@ -130,7 +148,6 @@ if df is not None:
                 } catch(e) {}
             }
 
-            // Iniciamos Quagga, pero NO procesamos datos en bucle de forma automática
             Quagga.init({
                 inputStream: {
                     name: "Live",
@@ -146,12 +163,12 @@ if df is not None:
                 locator: { patchSize: "medium", halfSample: false },
                 decoder: { 
                     readers: ["ean_reader", "ean_8_reader", "code_128_reader"],
-                    tryPatterns: true // Habilita lectura 360° (vertical, diagonal)
+                    tryPatterns: true
                 },
                 locate: true
             }, function(err) {
                 if (err) {
-                    document.getElementById('resultado').innerText = "Error: Permite el uso de la cámara.";
+                    document.getElementById('resultado').innerText = "Error: Habilita los permisos de cámara en tu navegador.";
                     document.getElementById('resultado').style.color = "red";
                     return;
                 }
@@ -159,17 +176,12 @@ if df is not None:
                 camaraIniciada = true;
             });
 
-            // LOGICA DEL BOTON MANUAL: Solo lee cuando hacés click
             document.getElementById('disparador').addEventListener('click', function() {
                 if (!camaraIniciada) return;
                 
-                document.getElementById('resultado').innerText = "⚡ Procesando imagen actual...";
+                document.getElementById('resultado').innerText = "⚡ Analizando imagen...";
                 document.getElementById('resultado').style.color = "#e67e22";
                 
-                // Forzamos a Quagga a capturar un único fotograma clave en este instante y analizarlo
-                const frame = Quagga.canvas.dom.image;
-                
-                // Registramos un listener temporal exclusivo para este disparo
                 const unaSolaLectura = function(data) {
                     if (data && data.codeResult && data.codeResult.code) {
                         const codigo = data.codeResult.code;
@@ -180,7 +192,6 @@ if df is not None:
                             
                             if (navigator.vibrate) navigator.vibrate(200);
                             
-                            // Enviamos el código exacto a Streamlit
                             window.parent.postMessage({
                                 type: 'streamlit:set_widget_value',
                                 key: 'barcode_detected',
@@ -188,25 +199,26 @@ if df is not None:
                             }, '*');
                             
                             Quagga.stop();
-                            Quagga.offDetected(unaSolaLectura); // Desactivamos el listener
+                            Quagga.offDetected(unaSolaLectura);
                         }
                     }
                 };
                 
                 Quagga.onDetected(unaSolaLectura);
                 
-                // Si pasados 1.5 segundos no encontró nada en esa foto, avisa para volver a intentar
                 setTimeout(() => {
                     Quagga.offDetected(unaSolaLectura);
-                    if (document.getElementById('resultado').innerText === "⚡ Procesando imagen actual...") {
-                        document.getElementById('resultado').innerText = "❌ No se leyó nada en esta posición. Reubica el código y vuelve a disparar.";
+                    if (document.getElementById('resultado').innerText === "⚡ Analizando imagen...") {
+                        document.getElementById('resultado').innerText = "❌ No se leyó un código claro. Reenfocá y volvé a disparar.";
                         document.getElementById('resultado').style.color = "#e74c3c";
                     }
-                }, 1500);
+                }, 1300);
             });
             </script>
             """
             components.html(html_code, height=330)
+        else:
+            st.info("💡 La cámara está apagada para ahorrar batería. Tocá el botón verde de arriba cuando quieras escanear.")
 
     # --- MOSTRAR RESULTADOS DE BÚSQUEDA ---
     codigo_a_buscar = st.session_state.buscar_este_codigo.lower().strip()
@@ -223,7 +235,7 @@ if df is not None:
             desc = primer_resultado['Descripcion']
             precio = primer_resultado['Precio']
             
-            # Historial de consultas
+            # Guardamos en el historial
             registro_historial = f"{desc} - **${precio:,}**"
             if not st.session_state.historial or st.session_state.historial[0] != registro_historial:
                 st.session_state.historial.insert(0, registro_historial)
@@ -236,7 +248,7 @@ if df is not None:
                 cod_int_texto = str(fila['Codigo Interno']).split('.')[0] if '.' in str(fila['Codigo Interno']) and str(fila['Codigo Interno']).split('.')[1] == '0' else str(fila['Codigo Interno'])
                 scanner_texto = str(fila['codigoscanner']).split('.')[0] if '.' in str(fila['codigoscanner']) else str(fila['codigoscanner'])
                 
-                # Renderizado Premium: El precio se muestra de un tamaño colosal
+                # Renderizado con el precio a tamaño 90px (Doble de grande)
                 st.markdown(f"""
                 <div class="producto-card">
                     <h2 style='margin:0; color:#2c3e50; font-size:26px;'>{fila['Descripcion']}</h2>
@@ -248,16 +260,8 @@ if df is not None:
                     </p>
                 </div>
                 """, unsafe_allow_html=True)
-            
-            # BOTÓN PARA LIMPIAR LA BÚSQUEDA ACTUAL
-            if st.button("❌ Limpiar código / Escanear otro", type="secondary", use_container_width=True):
-                st.session_state.buscar_este_codigo = ""
-                st.rerun()
         else:
-            st.warning(f"🔍 El código '{st.session_state.buscar_este_codigo}' no está en el Excel.")
-            if st.button("🔄 Borrar y reintentar", use_container_width=True):
-                st.session_state.buscar_este_codigo = ""
-                st.rerun()
+            st.warning(f"🔍 El código '{st.session_state.buscar_este_codigo}' no se encuentra en el archivo Excel.")
 
     # --- SECCIÓN DE HISTORIAL RECIENTE ---
     if st.session_state.historial:
