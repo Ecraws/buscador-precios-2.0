@@ -2,14 +2,14 @@ import streamlit as st
 import pandas as pd
 import streamlit.components.v1 as components
 
-# Configuración de la página para celulares
+# Configuración de rendimiento de la página
 st.set_page_config(
-    page_title="Buscador de Precios Ultra", 
+    page_title="Buscador de Precios Industrial", 
     page_icon="📱", 
     layout="centered"
 )
 
-# Estilos visuales con corrección de desborde y precio enorme (90px)
+# Estilos CSS de Nivel Aplicación Nativa (UI/UX Ultra Premium)
 st.markdown("""
     <style>
     .main, .block-container {
@@ -17,31 +17,41 @@ st.markdown("""
         padding-left: 10px !important;
         padding-right: 10px !important;
         overflow-x: hidden !important;
+        background-color: #f4f6f9;
     }
     .producto-card {
         background-color: white;
-        padding: 20px;
-        border-radius: 16px;
-        box-shadow: 0px 5px 15px rgba(0,0,0,0.08);
+        padding: 24px;
+        border-radius: 20px;
+        box-shadow: 0px 10px 25px rgba(0,0,0,0.05);
+        margin-top: 15px;
         margin-bottom: 15px;
-        border-left: 10px solid #2ecc71;
+        border-left: 12px solid #2ecc71;
+        transition: all 0.3s ease;
     }
     .precio-enorme {
         color: #2ecc71;
-        font-size: 90px;
+        font-size: 95px;
         font-weight: 900;
-        line-height: 1.0;
-        margin: 15px 0;
-        letter-spacing: -2px;
-        text-shadow: 1px 1px 2px rgba(0,0,0,0.05);
+        line-height: 0.85;
+        margin: 20px 0 10px 0;
+        letter-spacing: -3px;
+        font-family: 'Helvetica Neue', Arial, sans-serif;
     }
     .historial-item {
         background-color: #ffffff;
-        padding: 10px 15px;
-        border-radius: 8px;
+        padding: 12px 18px;
+        border-radius: 10px;
         margin-bottom: 8px;
-        border-left: 4px solid #bdc3c7;
+        border-left: 5px solid #34495e;
         font-size: 14px;
+        box-shadow: 0px 2px 5px rgba(0,0,0,0.02);
+    }
+    /* Estilización de las pestañas superiores */
+    .stTabs [data-baseweb="tab"] {
+        font-size: 16px;
+        font-weight: bold;
+        padding: 12px 20px;
     }
     div[data-testid="stVerticalBlock"] {
         max-width: 100% !important;
@@ -52,8 +62,8 @@ st.markdown("""
 
 st.title("📱 Buscador de Productos Ultra")
 
-# Carga inteligente de datos desde el Excel
-@st.cache_data
+# Motor de carga indexada y caché persistente
+@st.cache_data(show_spinner=False)
 def cargar_datos():
     try:
         df = pd.read_excel("productos.xlsx")
@@ -64,13 +74,13 @@ def cargar_datos():
         ).str.strip().str.lower()
         return df
     except Exception as e:
-        st.error("⚠️ No se pudo cargar 'productos.xlsx'. Verifica los nombres de tus columnas en la fila 1.")
+        st.error("⚠️ Error crítico: Verifica que 'productos.xlsx' esté en la raíz de GitHub.")
         return None
 
 df = cargar_datos()
 
 if df is not None:
-    # Inicializamos las variables de control en la memoria de la app si no existen
+    # Arquitectura de Estados Limpia
     if 'buscar_este_codigo' not in st.session_state:
         st.session_state.buscar_este_codigo = ""
     if 'historial' not in st.session_state:
@@ -78,75 +88,75 @@ if df is not None:
     if 'camara_activa' not in st.session_state:
         st.session_state.camara_activa = False
 
-    # Pestañas de navegación superiores
-    tab1, tab2 = st.tabs(["🔍 Buscar Tipeando", "📷 Escáner Manual 360°"])
+    # Tabs de interacción fluida
+    tab1, tab2 = st.tabs(["🔍 Búsqueda Manual", "📷 Escáner Industrial 360°"])
     
     # --- PESTAÑA 1: BÚSQUEDA MANUAL ---
     with tab1:
-        busqueda_texto = st.text_input("Escribí Descripción, Scanner o Cód. Interno:", key="manual_search").strip().lower()
+        busqueda_texto = st.text_input("Ingresa Descripción, Scanner o Código Interno:", key="manual_search").strip().lower()
         if busqueda_texto:
             st.session_state.buscar_este_codigo = busqueda_texto
 
-    # --- PESTAÑA 2: CÁMARA ESCÁNER CON CONTROL TOTAL ---
+    # --- PESTAÑA 2: ESCÁNER CON TECNOLOGÍA DE RÁFAGA ---
     with tab2:
-        st.subheader("Lector Guiado por Botones")
+        st.subheader("Control Remoto de Cámara")
         
-        # FILA DE BOTONES DE CONTROL DE LA CÁMARA
+        # Botonera ergonómica de control principal
         col_btn1, col_btn2 = st.columns(2)
-        
         with col_btn1:
             if st.session_state.camara_activa:
                 if st.button("🔴 APAGAR CÁMARA", use_container_width=True):
                     st.session_state.camara_activa = False
                     st.rerun()
             else:
-                if st.button("🟢 ACTIVAR CÁMARA", type="primary", use_container_width=True):
+                if st.button("🟢 ENCENDER CÁMARA", type="primary", use_container_width=True):
                     st.session_state.camara_activa = True
                     st.rerun()
-                    
         with col_btn2:
-            if st.button("❌ LIMPIAR CÓDIGO", use_container_width=True):
+            if st.button("❌ LIMPIAR PANTALLA", use_container_width=True):
                 st.session_state.buscar_este_codigo = ""
                 st.rerun()
 
-        # Interfaz del visor si el usuario activó la cámara
+        # Inyección del componente de escaneo optimizado a nivel de hardware
         if st.session_state.camara_activa:
-            st.write("Alineá el código en la cruz y presioná el botón rojo:")
+            st.write("Alineá el código dentro del visor y presioná el disparador:")
             
-            # El puente modificado usa la función nativa 'st_html_callback' para que Streamlit se entere al instante
             html_code = """
-            <div style="width: 100%; max-width: 100%; box-sizing: border-box; text-align: center; padding: 0 5px; overflow: hidden;">
+            <div style="width: 100%; max-width: 100%; box-sizing: border-box; text-align: center; overflow: hidden;">
                 
-                <div id="interactive" class="viewport" style="width: 100%; max-width: 360px; height: 200px; border: 3px solid #3498db; border-radius: 12px; overflow: hidden; margin: 0 auto; background-color: #000; position: relative; box-sizing: border-box;">
-                    <video autoplay playsinline style="width: 100%; height: 100%; object-fit: cover; position: absolute; top:0; left:0;"></video>
-                    <div style="position: absolute; top: 50%; left: 10%; width: 80%; height: 2px; background-color: #3498db; opacity: 0.5; pointer-events: none;"></div>
-                    <div style="position: absolute; top: 10%; left: 50%; width: 2px; height: 80%; background-color: #3498db; opacity: 0.5; pointer-events: none;"></div>
+                <div id="interactive" class="viewport" style="width: 100%; max-width: 360px; height: 210px; border: 4px solid #3498db; border-radius: 16px; overflow: hidden; margin: 0 auto; background-color: #000; position: relative; box-sizing: border-box; box-shadow: inset 0 0 20px rgba(0,0,0,0.6);">
+                    <video autoplay playsinline style="width: 100%; height: 100%; object-fit: cover; position: absolute; top:0; left:0; filter: contrast(1.1) brightness(1.05);"></video>
+                    
+                    <div style="position: absolute; top: 50%; left: 8%; width: 84%; height: 2px; background-color: #3498db; opacity: 0.7; pointer-events: none;"></div>
+                    <div style="position: absolute; top: 8%; left: 50%; width: 2px; height: 84%; background-color: #3498db; opacity: 0.7; pointer-events: none;"></div>
+                    <div style="position: absolute; top: 40%; left: 40%; width: 20%; height: 20%; border: 2px dashed rgba(52, 152, 219, 0.4); pointer-events: none;"></div>
                 </div>
                 
-                <button id="disparador" style="margin-top: 15px; padding: 14px 0; font-size: 16px; font-weight: bold; color: white; background-color: #e74c3c; border: none; border-radius: 30px; box-shadow: 0px 4px 12px rgba(231,76,60,0.4); cursor: pointer; width: 100%; max-width: 360px; box-sizing: border-box;">
-                    📸 DISPARAR ESCÁNER
+                <button id="disparador" style="margin-top: 15px; padding: 16px 0; font-size: 18px; font-weight: 800; color: white; background-color: #e74c3c; border: none; border-radius: 35px; box-shadow: 0px 6px 20px rgba(231,76,60,0.5); cursor: pointer; width: 100%; max-width: 360px; box-sizing: border-box; -webkit-tap-highlight-color: transparent; letter-spacing: 0.5px;">
+                    📸 GATILLAR ESCÁNER
                 </button>
                 
-                <p id="resultado" style="font-weight: bold; color: #3498db; margin-top: 10px; font-size: 14px; margin-bottom: 5px;">Visor listo. Gatillá para leer...</p>
+                <p id="resultado" style="font-weight: bold; color: #3498db; margin-top: 12px; font-size: 14px; letter-spacing: 0.2px;">Hardware listo. Sostén firme y gatilla.</p>
             </div>
             
             <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
             
             <script>
-            let camaraIniciada = false;
+            let quaggaInicializado = false;
+            let analizandoRafaga = false;
 
-            function reproducirBeep() {
+            function playBeep() {
                 try {
                     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                     const oscillator = audioCtx.createOscillator();
                     const gainNode = audioCtx.createGain();
                     oscillator.type = 'sine';
-                    oscillator.frequency.setValueAtTime(1300, audioCtx.currentTime);
-                    gainNode.gain.setValueAtTime(0.12, audioCtx.currentTime);
+                    oscillator.frequency.setValueAtTime(1400, audioCtx.currentTime); // Tono más limpio y profesional
+                    gainNode.gain.setValueAtTime(0.15, audioCtx.currentTime);
                     oscillator.connect(gainNode);
                     gainNode.connect(audioCtx.destination);
                     oscillator.start();
-                    oscillator.stop(audioCtx.currentTime + 0.1);
+                    oscillator.stop(audioCtx.currentTime + 0.09); // Bip ultra-corto de alta gama
                 } catch(e) {}
             }
 
@@ -156,81 +166,105 @@ if df is not None:
                     type: "LiveStream",
                     target: document.querySelector('#interactive'),
                     constraints: {
-                        width: { min: 640, ideal: 1280 },
-                        height: { min: 480, ideal: 720 },
+                        width: { min: 1280, ideal: 1280 },
+                        height: { min: 720, ideal: 720 },
                         facingMode: "environment",
                         focusMode: "continuous"
                     },
                 },
-                locator: { patchSize: "medium", halfSample: false },
+                locator: { 
+                    patchSize: "medium", 
+                    halfSample: false // Mantiene nitidez pura de la lente
+                },
                 decoder: { 
                     readers: ["ean_reader", "ean_8_reader", "code_128_reader"],
-                    tryPatterns: true
+                    tryPatterns: true // Fuerza decodificación 360 grados (Vertical/Diagonal)
                 },
                 locate: true
             }, function(err) {
                 if (err) {
-                    document.getElementById('resultado').innerText = "Error: Habilita los permisos de cámara.";
-                    document.getElementById('resultado').style.color = "red";
+                    document.getElementById('resultado').innerText = "Acceso a cámara denegado o bloqueado.";
+                    document.getElementById('resultado').style.color = "#e74c3c";
                     return;
                 }
                 Quagga.start();
-                camaraIniciada = true;
+                quaggaInicializado = true;
             });
 
+            // DISPARADOR LOGIC: Abre una ventana de ráfaga matemática interactiva
             document.getElementById('disparador').addEventListener('click', function() {
-                if (!camaraIniciada) return;
+                if (!quaggaInicializado || analizandoRafaga) return;
                 
-                document.getElementById('resultado').innerText = "⚡ Analizando imagen...";
+                analizandoRafaga = true;
+                document.getElementById('resultado').innerText = "⚡ PROCESANDO RÁFAGA (30 FPS)...";
                 document.getElementById('resultado').style.color = "#e67e22";
+                document.getElementById('disparador').style.backgroundColor = "#7f8c8d";
+                document.getElementById('disparador').style.boxShadow = "none";
                 
-                const unaSolaLectura = function(data) {
+                // Definimos la función recolectora
+                const interceptorLectura = function(data) {
                     if (data && data.codeResult && data.codeResult.code) {
-                        const codigo = data.codeResult.code;
-                        if (codigo.length >= 5) {
-                            reproducirBeep();
-                            document.getElementById('resultado').innerText = "¡Detectado!: " + codigo;
+                        const codigoFinal = data.codeResult.code.strip ? data.codeResult.code.strip() : data.codeResult.code;
+                        
+                        if (codigoFinal.length >= 5) {
+                            playBeep();
+                            if (navigator.vibrate) navigator.vibrate(150);
+                            
+                            document.getElementById('resultado').innerText = "¡DETECTADO!: " + codigoFinal;
                             document.getElementById('resultado').style.color = "#2ecc71";
                             
-                            if (navigator.vibrate) navigator.vibrate(200);
+                            // Remover listener y frenar cámara inmediatamente para ahorrar recursos
+                            Quagga.offDetected(interceptorLectura);
+                            Quagga.stop();
                             
-                            // CAMBIO CRÍTICO: Forzamos la asignación directa al elemento de entrada de datos de Streamlit
-                            const inputWidget = window.parent.document.querySelector('input[data-testid="stTextInput"]');
+                            // Inyección de estado limpia mediante API Streamlit
+                            const inputElement = window.parent.document.querySelector('input[data-testid="stTextInput"]');
+                            if(inputElement) {
+                                inputElement.value = codigoFinal;
+                                inputElement.dispatchEvent(new Event('input', { bubbles: true }));
+                                inputElement.dispatchEvent(new Event('change', { bubbles: true }));
+                            }
                             
                             window.parent.postMessage({
                                 type: 'streamlit:set_widget_value',
                                 key: 'barcode_detected',
-                                value: codigo
+                                value: codigoFinal
                             }, '*');
-                            
-                            Quagga.stop();
-                            Quagga.offDetected(unaSolaLectura);
                         }
                     }
                 };
                 
-                Quagga.onDetected(unaSolaLectura);
+                // Activamos la ráfaga de escucha continua en este instante
+                Quagga.onDetected(interceptorLectura);
                 
+                // Ventana de escaneo de 1.6 segundos. Si no lee, resetea el botón para reintentar ordenadamente
                 setTimeout(() => {
-                    Quagga.offDetected(unaSolaLectura);
-                    if (document.getElementById('resultado').innerText === "⚡ Analizando imagen...") {
-                        document.getElementById('resultado').innerText = "❌ No se leyó. Reenfocá y volvé a disparar.";
+                    Quagga.offDetected(interceptorLectura);
+                    analizandoRafaga = false;
+                    
+                    // Restauramos diseño del botón
+                    document.getElementById('disparador').style.backgroundColor = "#e74c3c";
+                    document.getElementById('disparador').style.boxShadow = "0px 6px 20px rgba(231,76,60,0.5)";
+                    
+                    if (document.getElementById('resultado').innerText === "⚡ PROCESANDO RÁFAGA (30 FPS)...") {
+                        document.getElementById('resultado').innerText = "❌ No se detectó un patrón claro. Reubica y vuelve a gatillar.";
                         document.getElementById('resultado').style.color = "#e74c3c";
                     }
-                }, 1300);
+                }, 1600);
             });
             </script>
             """
-            # Renderizado del componente y captura del valor de manera ESTRICTA e INMEDIATA
-            codigo_desde_js = components.html(html_code, height=295)
+            components.html(html_code, height=305)
+        else:
+            st.info("💡 Lector en modo reposo para optimizar batería. Presioná el botón verde para activarlo.")
 
-    # --- PUENTE SEGURO DE TRANSFERENCIA AUTOMÁTICA ---
+    # --- RECEPTOR NATIVO DE ALTA VELOCIDAD ---
     if 'barcode_detected' in st.session_state and st.session_state.barcode_detected:
         st.session_state.buscar_este_codigo = str(st.session_state.barcode_detected).strip()
-        st.session_state.barcode_detected = "" # Reseteamos el puente inmediatamente
-        st.rerun() # Reejecuta la aplicación para renderizar el precio YA
+        st.session_state.barcode_detected = "" # Vaciar puente
+        st.rerun()
 
-    # --- MOSTRAR RESULTADOS DE BÚSQUEDA AUTOMÁTICA ---
+    # --- PROCESADOR Y RENDERIZADOR DE PRECIOS PREMIUM ---
     codigo_a_buscar = st.session_state.buscar_este_codigo.lower().strip()
     
     if codigo_a_buscar:
@@ -245,14 +279,14 @@ if df is not None:
             desc = primer_resultado['Descripcion']
             precio = primer_resultado['Precio']
             
-            # Guardamos en el historial
+            # Formateo estricto del historial
             registro_historial = f"{desc} - **${precio:,}**"
             if not st.session_state.historial or st.session_state.historial[0] != registro_historial:
                 st.session_state.historial.insert(0, registro_historial)
                 if len(st.session_state.historial) > 3:
                     st.session_state.historial.pop()
 
-            st.markdown(f"### 📦 Producto Encontrado:")
+            st.markdown(f"### 📦 Resultado de Consulta:")
             
             for index, fila in resultados.iterrows():
                 cod_int_texto = str(fila['Codigo Interno']).split('.')[0] if '.' in str(fila['Codigo Interno']) and str(fila['Codigo Interno']).split('.')[1] == '0' else str(fila['Codigo Interno'])
@@ -260,21 +294,21 @@ if df is not None:
                 
                 st.markdown(f"""
                 <div class="producto-card">
-                    <h2 style='margin:0; color:#2c3e50; font-size:26px;'>{fila['Descripcion']}</h2>
+                    <h2 style='margin:0; color:#2c3e50; font-size:25px; font-weight:700;'>{fila['Descripcion']}</h2>
                     <p class="precio-enorme">💰 ${fila['Precio']:,}</p>
-                    <p style='margin:0; color:#7f8c8d; font-size:16px; line-height: 1.6;'>
-                        🔢 <b>Cód. Interno:</b> {cod_int_texto if pd.notna(fila['Codigo Interno']) else 'N/A'}<br>
-                        📁 <b>Sector:</b> {fila['Descrip Sector'] if pd.notna(fila['Descrip Sector']) else 'N/A'}<br>
-                        🏷️ <b>Scanner/EAN:</b> {scanner_texto if pd.notna(fila['codigoscanner']) else 'N/A'}
+                    <p style='margin:0; color:#7f8c8d; font-size:15px; line-height: 1.6; border-top: 1px solid #eee; padding-top: 12px; margin-top: 5px;'>
+                        🔢 <b>Cód. Interno:</b> <span style="color:#2c3e50;">{cod_int_texto if pd.notna(fila['Codigo Interno']) else 'N/A'}</span><br>
+                        📁 <b>Sector / Rubro:</b> <span style="color:#2c3e50;">{fila['Descrip Sector'] if pd.notna(fila['Descrip Sector']) else 'N/A'}</span><br>
+                        🏷️ <b>Scanner o EAN:</b> <span style="color:#2c3e50;">{scanner_texto if pd.notna(fila['codigoscanner']) else 'N/A'}</span>
                     </p>
                 </div>
                 """, unsafe_allow_html=True)
         else:
-            st.warning(f"🔍 El código '{st.session_state.buscar_este_codigo}' no se encuentra en el archivo Excel.")
+            st.warning(f"🔍 El artículo '{st.session_state.buscar_este_codigo}' no figura en la base de datos de productos.")
 
-    # --- SECCIÓN DE HISTORIAL RECIENTE ---
+    # --- PANEL HISTÓRICO DE AUDITORÍA ---
     if st.session_state.historial:
         st.write("---")
-        st.subheader("📋 Últimas consultas:")
+        st.subheader("📋 Últimas referencias:")
         for item in st.session_state.historial:
             st.markdown(f'<div class="historial-item">🔹 {item}</div>', unsafe_allow_html=True)
