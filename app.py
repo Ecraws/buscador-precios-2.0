@@ -13,7 +13,6 @@ st.set_page_config(
 # --- ARQUITECTURA DE DISEÑO ULTRA-PREMIUM (CSS) ---
 st.markdown("""
     <style>
-    /* Configuración global y fondo oscuro profundo */
     .main, .block-container {
         max-width: 100% !important;
         padding: 14px !important;
@@ -94,7 +93,6 @@ st.markdown("""
         line-height: 1.3;
     }
     
-    /* CONTENEDOR DE PRECIO TRADICIONAL */
     .precio-contenedor {
         background: rgba(255, 255, 255, 0.03);
         padding: 14px 18px;
@@ -103,7 +101,6 @@ st.markdown("""
         border: 1px solid rgba(255, 255, 255, 0.05);
     }
     
-    /* CONTENEDOR PARTIDO EN DOS */
     .precio-split-container {
         display: flex;
         gap: 12px;
@@ -158,7 +155,6 @@ st.markdown("""
         font-size: 13px;
     }
     
-    /* Píldoras de estado de tiempo */
     .status-tiempo {
         font-size: 11px;
         font-weight: 700;
@@ -211,11 +207,9 @@ def formatear_fecha(val):
     except:
         return str(val)
 
-# --- NORMALIZADOR Y PROCESADOR DE TIEMPOS ULTRA SEGURO ---
 def evaluar_estado_oferta(desde_val, hasta_val):
     try:
         hoy = datetime.now().date()
-        
         dt_hasta = pd.to_datetime(hasta_val, errors='coerce')
         dt_desde = pd.to_datetime(desde_val, errors='coerce')
         
@@ -225,11 +219,9 @@ def evaluar_estado_oferta(desde_val, hasta_val):
         f_hasta = dt_hasta.date()
         f_desde = dt_desde.date()
             
-        # 1. Filtro estricto: Si ya expiró, destruye la promo de la vista
         if hoy > f_hasta:
             return 'vencido'
             
-        # 2. Notificación interactiva: Último día activo
         if hoy == f_hasta:
             return '<span class="status-tiempo status-ultimo">⚠️ ¡ÚLTIMO DÍA! Retirar cartel al cerrar</span>'
             
@@ -243,6 +235,15 @@ def evaluar_estado_oferta(desde_val, hasta_val):
 
 def limpiar_codigo(cod):
     if pd.isna(cod): return ""
+    # Convierte flotantes de Excel a strings enteros puros
+    if isinstance(cod, float):
+        if cod.is_integer():
+            return str(int(cod)).strip().lower()
+        else:
+            st_cod = str(cod).strip()
+            if '.' in st_cod and st_cod.split('.')[1] == '0':
+                return st_cod.split('.')[0].lower()
+    
     st_cod = str(cod).strip()
     if '.' in st_cod and st_cod.split('.')[1] == '0':
         st_cod = st_cod.split('.')[0]
@@ -250,9 +251,25 @@ def limpiar_codigo(cod):
 
 def fragmentar_codigos_multiples(celda):
     if pd.isna(celda): return []
+    
+    # Manejar si Excel interpreta la celda de códigos múltiples como un número por error
+    if isinstance(celda, (int, float)):
+        return [limpiar_codigo(celda)]
+        
     texto = str(celda).strip()
+    # Rompe limpiamente usando separadores comunes (|, -, coma o espacios)
     partes = re.split(r'\s*[\|\-,\s]\s*', texto)
-    return [limpiar_codigo(p) for p in partes if p.strip() != ""]
+    
+    codigos_limpios = []
+    for p in partes:
+        p_limpio = p.strip()
+        if p_limpio != "":
+            # Remover terminaciones decimales accidentales dentro de la cadena partida
+            if p_limpio.endswith('.0'):
+                p_limpio = p_limpio[:-2]
+            codigos_limpios.append(p_limpio.lower())
+            
+    return codigos_limpios
 
 @st.cache_data(show_spinner=False)
 def cargar_todo():
@@ -283,6 +300,7 @@ def cargar_todo():
         if "OFERTAS" in xls.sheet_names:
             df_of = pd.read_excel(xls, sheet_name="OFERTAS")
             for _, fila in df_of.iterrows():
+                if fila.dropna().empty: continue
                 c_int = limpiar_codigo(fila.iloc[0]) 
                 c_sku = limpiar_codigo(fila.iloc[2]) 
                 of_data = {
@@ -297,6 +315,7 @@ def cargar_todo():
         if "DESTACADOS" in xls.sheet_names:
             df_dest = pd.read_excel(xls, sheet_name="DESTACADOS")
             for _, fila in df_dest.iterrows():
+                if fila.dropna().empty: continue
                 c_int = limpiar_codigo(fila.iloc[0]) 
                 c_sku = limpiar_codigo(fila.iloc[2]) 
                 of_data = {
@@ -307,17 +326,18 @@ def cargar_todo():
                 if c_int: mapa_ofertas[c_int] = of_data
                 if c_sku: mapa_ofertas[c_sku] = of_data
 
-        # Hoja: COMBOS (Índices estrictamente mapeados)
+        # Hoja: COMBOS
         if "COMBOS" in xls.sheet_names:
             df_comb = pd.read_excel(xls, sheet_name="COMBOS")
             for _, fila in df_comb.iterrows():
-                lista_internos = fragmentar_codigos_multiples(fila.iloc[0]) # Col A
-                lista_skus = fragmentar_codigos_multiples(fila.iloc[2])     # Col C
+                if fila.dropna().empty: continue
+                lista_internos = fragmentar_codigos_multiples(fila.iloc[0]) 
+                lista_skus = fragmentar_codigos_multiples(fila.iloc[2])     
                 
                 of_data = {
-                    'tipo': 'COMBO', 'precio_of': fila.iloc[5],             # Col F
-                    'ahorro': fila.iloc[6], 'concepto': fila.iloc[3],       # Col G y Col D
-                    'desde': fila.iloc[7], 'hasta': fila.iloc[8]            # Col H y Col I
+                    'tipo': 'COMBO', 'precio_of': fila.iloc[5], 
+                    'ahorro': fila.iloc[6], 'concepto': fila.iloc[3], 
+                    'desde': fila.iloc[7], 'hasta': fila.iloc[8]
                 }
                 
                 for sub_int in lista_internos:
@@ -326,7 +346,7 @@ def cargar_todo():
                     if sub_sku: mapa_ofertas[sub_sku] = of_data
 
     except Exception as e:
-        st.warning("⚠️ Formato modificado o inconsistencias detectadas en 'padron de ofertas.xlsx'.")
+        st.warning("⚠️ Inconsistencia detectada en 'padron de ofertas.xlsx'.")
 
     return df_base, mapa_base, mapa_ofertas
 
@@ -362,7 +382,6 @@ if df_base is not None:
                 es_oferta_valida = False
                 
                 if oferta_vinculada:
-                    # Validación en tiempo real del periodo de vigencia
                     resultado_evaluacion = evaluar_estado_oferta(oferta_vinculada['desde'], oferta_vinculada['hasta'])
                     if resultado_evaluacion != 'vencido':
                         es_oferta_valida = True
@@ -416,7 +435,6 @@ if df_base is not None:
                         f'</div>'
                     )
                 else:
-                    # Render estándar si el producto no tiene promo activa o ya expiró temporalmente
                     html_tarjeta = (
                         f'<div class="producto-card">'
                         f'<h2 class="producto-titulo">{prod["desc"]}</h2>'
@@ -431,4 +449,4 @@ if df_base is not None:
                 st.markdown(html_tarjeta, unsafe_allow_html=True)
         else:
             st.error(f"🔍 No se encontró ningún artículo para: '{busqueda}'.")
-                
+            
