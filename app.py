@@ -21,13 +21,11 @@ st.markdown("""
         background-color: #0b0f19 !important;
     }
     
-    /* Colores globales de texto nativo */
     h1, h2, h3, h4, p, label {
         color: #ffffff !important;
         font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
     }
     
-    /* Input de texto moderno */
     .stTextInput input {
         background-color: #1e293b !important;
         color: #ffffff !important;
@@ -41,7 +39,6 @@ st.markdown("""
         box-shadow: 0 0 10px rgba(0, 242, 254, 0.2) !important;
     }
 
-    /* Formulario contenedor estilizado */
     div[data-testid="stForm"] {
         padding: 16px !important;
         border-radius: 20px !important;
@@ -51,21 +48,18 @@ st.markdown("""
         box-shadow: 0px 10px 30px rgba(0, 0, 0, 0.2) !important;
     }
     
-    /* Botón Principal */
     .stButton button {
         background: linear-gradient(135deg, #2ecc71 0%, #00f2fe 100%) !important;
         color: #0b0f19 !important;
         font-weight: 700 !important;
-        letter-spacing: 0.5px !important;
         border-radius: 14px !important;
         border: none !important;
         padding: 12px !important;
-        font-size: 15px !important;
         transition: all 0.3s ease !important;
         width: 100% !important;
     }
     
-    /* --- TARJETA DE PRODUCTO BASE --- */
+    /* --- TARJETAS --- */
     .producto-card {
         background: linear-gradient(135deg, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 0.95) 100%);
         padding: 24px;
@@ -88,7 +82,6 @@ st.markdown("""
         background: linear-gradient(90deg, #64748b, #cbd5e1);
     }
 
-    /* --- TARJETA CON OFERTA ACTIVA (Borde Neón Dinámico) --- */
     .producto-card.con-oferta::before {
         background: linear-gradient(90deg, #ff4757, #ffa502) !important;
     }
@@ -99,10 +92,9 @@ st.markdown("""
         font-size: 22px !important; 
         font-weight: 800 !important;
         line-height: 1.3;
-        letter-spacing: -0.5px;
     }
     
-    /* Contenedores de Precios */
+    /* CONTENEDOR DE PRECIO TRADICIONAL */
     .precio-contenedor {
         background: rgba(255, 255, 255, 0.03);
         padding: 14px 18px;
@@ -111,13 +103,35 @@ st.markdown("""
         border: 1px solid rgba(255, 255, 255, 0.05);
     }
     
+    /* CONTENEDOR PARTIDO EN DOS */
+    .precio-split-container {
+        display: flex;
+        gap: 12px;
+        margin-bottom: 14px;
+        width: 100%;
+    }
+    
+    .split-half {
+        flex: 1;
+        background: rgba(255, 255, 255, 0.03);
+        padding: 12px 14px;
+        border-radius: 16px;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        text-align: center;
+    }
+    
+    .split-half.combo-side {
+        background: rgba(255, 165, 0, 0.04);
+        border: 1px solid rgba(254, 165, 2, 0.2);
+    }
+
     .precio-enorme {
         color: #ffffff;
-        font-size: 54px;
+        font-size: 46px;
         font-weight: 900;
         line-height: 1;
         margin: 0;
-        letter-spacing: -2px;
+        letter-spacing: -1px;
     }
 
     .precio-oferta-color {
@@ -126,55 +140,54 @@ st.markdown("""
         -webkit-text-fill-color: transparent;
     }
 
+    .split-label {
+        font-size: 11px;
+        text-transform: uppercase;
+        color: #64748b;
+        font-weight: 700;
+        margin-bottom: 4px;
+        letter-spacing: 0.5px;
+    }
+
     .info-oferta-bloque {
-        background: rgba(255, 71, 87, 0.08);
-        border: 1px solid rgba(255, 71, 87, 0.15);
+        background: rgba(30, 41, 59, 0.8);
+        border: 1px solid rgba(255, 255, 255, 0.05);
         padding: 12px;
         border-radius: 14px;
         margin-bottom: 14px;
         font-size: 13px;
     }
     
-    /* Detalles Técnicos */
-    .meta-flex {
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-    }
-    
-    .meta-item {
-        font-size: 13px;
-        color: #94a3b8;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        background: rgba(255, 255, 255, 0.01);
-        padding: 6px 12px;
-        border-radius: 8px;
-        border: 1px solid rgba(255, 255, 255, 0.02);
-    }
-    
-    .meta-label {
-        font-weight: 700;
-        color: #64748b;
+    /* Píldoras de estado de tiempo */
+    .status-tiempo {
         font-size: 11px;
-        text-transform: uppercase;
+        font-weight: 700;
+        padding: 4px 8px;
+        border-radius: 6px;
+        display: inline-block;
+    }
+    .status-activo { background: rgba(46, 204, 113, 0.15); color: #2ecc71 !important; }
+    .status-futuro { background: rgba(255, 165, 0, 0.15); color: #ffa502 !important; }
+    .status-ultimo { 
+        background: rgba(231, 76, 60, 0.25); 
+        color: #ff4757 !important; 
+        border: 1px solid rgba(231, 76, 60, 0.5);
+        animation: pulse_clean 2s infinite ease-in-out;
     }
     
-    .meta-valor {
-        color: #cbd5e1;
-        font-weight: 600;
+    @keyframes pulse_clean {
+        0% { opacity: 1; }
+        50% { opacity: 0.5; }
+        100% { opacity: 1; }
     }
-
-    .historial-item {
-        background: rgba(30, 41, 59, 0.5);
-        padding: 12px 16px;
-        border-radius: 12px;
-        margin-bottom: 6px;
-        border-left: 4px solid #00f2fe;
-        font-size: 14px;
-        color: #e2e8f0;
+    
+    .meta-flex { display: flex; flex-direction: column; gap: 6px; }
+    .meta-item {
+        font-size: 13px; color: #94a3b8; display: flex; align-items: center; justify-content: space-between;
+        background: rgba(255, 255, 255, 0.01); padding: 6px 12px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.02);
     }
+    .meta-label { font-weight: 700; color: #64748b; font-size: 11px; text-transform: uppercase; }
+    .meta-valor { color: #cbd5e1; font-weight: 600; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -191,11 +204,42 @@ def formatear_precio(valor):
 def formatear_fecha(val):
     try:
         if pd.isna(val): return "Sin fecha"
-        if isinstance(val, datetime):
-            return val.strftime("%d/%m/%Y")
+        dt = pd.to_datetime(val, errors='coerce')
+        if pd.notna(dt):
+            return dt.strftime("%d/%m/%Y")
         return str(val).split(" ")[0]
     except:
         return str(val)
+
+# --- NORMALIZADOR Y PROCESADOR DE TIEMPOS ULTRA SEGURO ---
+def evaluar_estado_oferta(desde_val, hasta_val):
+    try:
+        hoy = datetime.now().date()
+        
+        dt_hasta = pd.to_datetime(hasta_val, errors='coerce')
+        dt_desde = pd.to_datetime(desde_val, errors='coerce')
+        
+        if pd.isna(dt_hasta) or pd.isna(dt_desde):
+            return ""
+            
+        f_hasta = dt_hasta.date()
+        f_desde = dt_desde.date()
+            
+        # 1. Filtro estricto: Si ya expiró, destruye la promo de la vista
+        if hoy > f_hasta:
+            return 'vencido'
+            
+        # 2. Notificación interactiva: Último día activo
+        if hoy == f_hasta:
+            return '<span class="status-tiempo status-ultimo">⚠️ ¡ÚLTIMO DÍA! Retirar cartel al cerrar</span>'
+            
+        diferencia = (hoy - f_desde).days
+        if diferencia >= 0:
+            return f'<span class="status-tiempo status-activo">⏱️ Activa (Hace {diferencia} días)</span>'
+        else:
+            return f'<span class="status-tiempo status-futuro">⏳ Inicia en {abs(diferencia)} días</span>'
+    except:
+        return ""
 
 def limpiar_codigo(cod):
     if pd.isna(cod): return ""
@@ -207,14 +251,11 @@ def limpiar_codigo(cod):
 def fragmentar_codigos_multiples(celda):
     if pd.isna(celda): return []
     texto = str(celda).strip()
-    # Rompe por cualquier secuencia de barras, guiones, comas o espacios
     partes = re.split(r'\s*[\|\-,\s]\s*', texto)
     return [limpiar_codigo(p) for p in partes if p.strip() != ""]
 
-# --- CARGA Y INDEXACIÓN EXTREMA EN MEMORIA ---
 @st.cache_data(show_spinner=False)
 def cargar_todo():
-    # 1. Cargar Base Normal
     df_base, mapa_base = None, {}
     try:
         df_base = pd.read_excel("productos.xlsx")
@@ -234,7 +275,6 @@ def cargar_todo():
     except Exception as e:
         st.error("⚠️ Error cargando 'productos.xlsx'")
 
-    # 2. Cargar Base Ofertas
     mapa_ofertas = {}
     try:
         xls = pd.ExcelFile("padron de ofertas.xlsx")
@@ -247,7 +287,8 @@ def cargar_todo():
                 c_sku = limpiar_codigo(fila.iloc[2]) 
                 of_data = {
                     'tipo': 'OFERTA', 'precio_of': fila.iloc[5], 
-                    'ahorro': fila.iloc[6], 'concepto': fila.iloc[9], 'hasta': fila.iloc[11]
+                    'ahorro': fila.iloc[6], 'concepto': fila.iloc[9], 
+                    'desde': fila.iloc[10], 'hasta': fila.iloc[11]
                 }
                 if c_int: mapa_ofertas[c_int] = of_data
                 if c_sku: mapa_ofertas[c_sku] = of_data
@@ -260,21 +301,23 @@ def cargar_todo():
                 c_sku = limpiar_codigo(fila.iloc[2]) 
                 of_data = {
                     'tipo': 'DESTACADO', 'precio_of': fila.iloc[4], 
-                    'ahorro': None, 'concepto': fila.iloc[5], 'hasta': fila.iloc[7]
+                    'ahorro': None, 'concepto': fila.iloc[5], 
+                    'desde': fila.iloc[6], 'hasta': fila.iloc[7]
                 }
                 if c_int: mapa_ofertas[c_int] = of_data
                 if c_sku: mapa_ofertas[c_sku] = of_data
 
-        # Hoja: COMBOS
+        # Hoja: COMBOS (Índices estrictamente mapeados)
         if "COMBOS" in xls.sheet_names:
             df_comb = pd.read_excel(xls, sheet_name="COMBOS")
             for _, fila in df_comb.iterrows():
-                lista_internos = fragmentar_codigos_multiples(fila.iloc[0]) 
-                lista_skus = fragmentar_codigos_multiples(fila.iloc[2])     
+                lista_internos = fragmentar_codigos_multiples(fila.iloc[0]) # Col A
+                lista_skus = fragmentar_codigos_multiples(fila.iloc[2])     # Col C
                 
                 of_data = {
-                    'tipo': 'COMBO', 'precio_of': fila.iloc[5], 
-                    'ahorro': fila.iloc[6], 'concepto': fila.iloc[3], 'hasta': fila.iloc[8]
+                    'tipo': 'COMBO', 'precio_of': fila.iloc[5],             # Col F
+                    'ahorro': fila.iloc[6], 'concepto': fila.iloc[3],       # Col G y Col D
+                    'desde': fila.iloc[7], 'hasta': fila.iloc[8]            # Col H y Col I
                 }
                 
                 for sub_int in lista_internos:
@@ -283,23 +326,19 @@ def cargar_todo():
                     if sub_sku: mapa_ofertas[sub_sku] = of_data
 
     except Exception as e:
-        st.warning("⚠️ No se encontró 'padron de ofertas.xlsx' o tiene formato incorrecto.")
+        st.warning("⚠️ Formato modificado o inconsistencias detectadas en 'padron de ofertas.xlsx'.")
 
     return df_base, mapa_base, mapa_ofertas
 
 df_base, mapa_base, mapa_ofertas = cargar_todo()
 
 if df_base is not None:
-    if 'historial' not in st.session_state:
-        st.session_state.historial = []
-
     with st.form(key="formulario_busqueda", clear_on_submit=False):
         busqueda = st.text_input("🔍 Buscar Producto:", placeholder="Código o nombre...").strip().lower()
         bot_buscar = st.form_submit_button("CONSEGUIR PRECIO")
 
     if busqueda:
         resultados_lista = []
-        
         if busqueda in mapa_base:
             resultados_lista.append(mapa_base[busqueda])
         else:
@@ -312,49 +351,62 @@ if df_base is not None:
                 })
 
         if resultados_lista:
-            # Historial rápido
-            st.markdown('<p style="font-weight: 700; font-size: 15px; margin-top:20px; color:#94a3b8 !important;">📌 Guardar en Consultas Recientes:</p>', unsafe_allow_html=True)
-            opciones_historial = [f"{p['desc']} ({formatear_precio(p['precio'])})" for p in resultados_lista]
-            seleccion_prod = st.selectbox("Historial:", options=opciones_historial, label_visibility="collapsed")
-            
-            if st.button("REGISTRAR EN HISTORIAL"):
-                if seleccion_prod:
-                    idx = opciones_historial.index(seleccion_prod)
-                    p_elegido = resultados_lista[idx]
-                    item_hist = f"{p_elegido['desc']} - **{formatear_precio(p_elegido['precio'])}**"
-                    if not st.session_state.historial or st.session_state.historial[0] != item_hist:
-                        st.session_state.historial.insert(0, item_hist)
-                        if len(st.session_state.historial) > 4: st.session_state.historial.pop()
-                    st.success("¡Agregado!")
-
             st.write("---")
-            st.markdown(f'<h3 style="font-size:18px; font-weight:700; color:#94a3b8 !important;">📦 Encontrados ({len(resultados_lista)}):</h3>', unsafe_allow_html=True)
-            
-            # --- DESPLIEGUE SEGURO DE TARJETAS ---
             for prod in resultados_lista:
                 oferta_vinculada = mapa_ofertas.get(prod['interno']) or mapa_ofertas.get(prod['scanner'])
-                
                 precio_base_visual = formatear_precio(prod['precio'])
                 cod_int = prod['interno'] if prod['interno'] != '' else 'N/A'
                 cod_scan = prod['scanner'] if prod['scanner'] != '' else 'N/A'
                 
+                badge_tiempo = ""
+                es_oferta_valida = False
+                
                 if oferta_vinculada:
+                    # Validación en tiempo real del periodo de vigencia
+                    resultado_evaluacion = evaluar_estado_oferta(oferta_vinculada['desde'], oferta_vinculada['hasta'])
+                    if resultado_evaluacion != 'vencido':
+                        es_oferta_valida = True
+                        badge_tiempo = resultado_evaluacion
+
+                if es_oferta_valida:
                     precio_oferta_visual = formatear_precio(oferta_vinculada['precio_of'])
                     txt_ahorro = f" | Ahorrás: {formatear_precio(oferta_vinculada['ahorro'])}" if oferta_vinculada['ahorro'] else ""
                     txt_hasta = formatear_fecha(oferta_vinculada['hasta'])
                     concepto_txt = str(oferta_vinculada['concepto']).upper() if pd.notna(oferta_vinculada['concepto']) else "PROMOCIÓN"
                     tipo_promo = str(oferta_vinculada['tipo'])
                     
+                    if tipo_promo == "COMBO":
+                        bloque_precio_html = (
+                            f'<div class="precio-split-container">'
+                            f'<div class="split-half">'
+                            f'<div class="split-label">Normal Indiv.</div>'
+                            f'<div class="precio-enorme" style="color:#94a3b8;">{precio_base_visual}</div>'
+                            f'</div>'
+                            f'<div class="split-half combo-side">'
+                            f'<div class="split-label" style="color:#ffa502;">Precio Combo</div>'
+                            f'<div class="precio-enorme precio-oferta-color">{precio_oferta_visual}</div>'
+                            f'</div>'
+                            f'</div>'
+                        )
+                    else:
+                        bloque_precio_html = (
+                            f'<div class="precio-contenedor">'
+                            f'<p class="precio-enorme precio-oferta-color">{precio_oferta_visual}</p>'
+                            f'<p style="margin:5px 0 0 0; font-size:13px; color:#94a3b8 !important;">Precio normal: <del>{precio_base_visual}</del></p>'
+                            f'</div>'
+                        )
+                    
                     html_tarjeta = (
                         f'<div class="producto-card con-oferta">'
-                        f'<div style="display:inline-block; padding:4px 10px; background:linear-gradient(135deg, #ff4757, #ffa502); color:white; font-weight:700; font-size:11px; border-radius:8px; text-transform:uppercase; margin-bottom:10px; letter-spacing:0.5px;">🔥 {tipo_promo}</div>'
-                        f'<h2 class="producto-titulo">{prod["desc"]}</h2>'
-                        f'<div class="precio-contenedor">'
-                        f'<p class="precio-enorme precio-oferta-color">{precio_oferta_visual}</p>'
-                        f'<p style="margin:5px 0 0 0; font-size:13px; color:#94a3b8 !important;">Precio normal individual: <del>{precio_base_visual}</del></p>'
+                        f'<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:6px;">'
+                        f'<span style="padding:4px 10px; background:linear-gradient(135deg, #ff4757, #ffa502); color:white; font-weight:700; font-size:11px; border-radius:8px; text-transform:uppercase; letter-spacing:0.5px;">🔥 {tipo_promo}</span>'
+                        f'{badge_tiempo}'
                         f'</div>'
+                        f'<h2 class="producto-titulo">{prod["desc"]}</h2>'
+                        f'{bloque_precio_html}'
                         f'<div class="info-oferta-bloque">'
-                        f'📦 <b>DETALLE DE PROMO:</b><br>{concepto_txt}{txt_ahorro}<br><span style="color:#ff6b81;">📅 Vence: {txt_hasta}</span>'
+                        f'📦 <b>DETALLE:</b> {concepto_txt}{txt_ahorro}<br>'
+                        f'<span style="color:#94a3b8; font-size:12px;">📅 Vence: {txt_hasta}</span>'
                         f'</div>'
                         f'<div class="meta-flex">'
                         f'<div class="meta-item"><span class="meta-label">Código Interno</span><span class="meta-valor">{cod_int}</span></div>'
@@ -364,6 +416,7 @@ if df_base is not None:
                         f'</div>'
                     )
                 else:
+                    # Render estándar si el producto no tiene promo activa o ya expiró temporalmente
                     html_tarjeta = (
                         f'<div class="producto-card">'
                         f'<h2 class="producto-titulo">{prod["desc"]}</h2>'
@@ -378,9 +431,4 @@ if df_base is not None:
                 st.markdown(html_tarjeta, unsafe_allow_html=True)
         else:
             st.error(f"🔍 No se encontró ningún artículo para: '{busqueda}'.")
-
-    if st.session_state.historial:
-        st.write("---")
-        st.markdown('<h3 style="font-size:18px; font-weight:700; color:#94a3b8 !important;">📋 Últimas consultas:</h3>', unsafe_allow_html=True)
-        for item in st.session_state.historial:
-            st.markdown(f'<div class="historial-item">🔹 {item}</div>', unsafe_allow_html=True)
+                
