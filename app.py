@@ -213,7 +213,7 @@ def evaluar_estado_oferta(desde_val, hasta_val):
         dt_hasta = pd.to_datetime(hasta_val, errors='coerce')
         dt_desde = pd.to_datetime(desde_val, errors='coerce')
         
-        if pd.isna(dt_hasta) or pd.isna(dt_desde):
+        if pd.isna(dt_hasta) or pd.isna(dt_desde) or not hasattr(dt_hasta, 'date') or not hasattr(dt_desde, 'date'):
             return ""
             
         f_hasta = dt_hasta.date()
@@ -235,16 +235,26 @@ def evaluar_estado_oferta(desde_val, hasta_val):
 
 def limpiar_codigo(cod):
     if pd.isna(cod): return ""
-    # Convierte flotantes de Excel a strings enteros puros
+    
     if isinstance(cod, float):
         if cod.is_integer():
             return str(int(cod)).strip().lower()
         else:
-            st_cod = str(cod).strip()
+            st_cod = f"{cod:f}".strip() if 'e' in str(cod).lower() else str(cod).strip()
             if '.' in st_cod and st_cod.split('.')[1] == '0':
                 return st_cod.split('.')[0].lower()
-    
+            return st_cod.lower()
+            
+    if isinstance(cod, int):
+        return str(cod).strip().lower()
+
     st_cod = str(cod).strip()
+    if 'e+' in st_cod.lower():
+        try:
+            st_cod = f"{float(st_cod):.0f}"
+        except:
+            pass
+            
     if '.' in st_cod and st_cod.split('.')[1] == '0':
         st_cod = st_cod.split('.')[0]
     return st_cod.lower()
@@ -252,23 +262,18 @@ def limpiar_codigo(cod):
 def fragmentar_codigos_multiples(celda):
     if pd.isna(celda): return []
     
-    # Manejar si Excel interpreta la celda de códigos múltiples como un número por error
     if isinstance(celda, (int, float)):
         return [limpiar_codigo(celda)]
         
     texto = str(celda).strip()
-    # Rompe limpiamente usando separadores comunes (|, -, coma o espacios)
     partes = re.split(r'\s*[\|\-,\s]\s*', texto)
     
     codigos_limpios = []
     for p in partes:
-        p_limpio = p.strip()
-        if p_limpio != "":
-            # Remover terminaciones decimales accidentales dentro de la cadena partida
-            if p_limpio.endswith('.0'):
-                p_limpio = p_limpio[:-2]
-            codigos_limpios.append(p_limpio.lower())
-            
+        if p.strip() != "":
+            cod_p = limpiar_codigo(p)
+            if cod_p:
+                codigos_limpios.append(cod_p)
     return codigos_limpios
 
 @st.cache_data(show_spinner=False)
@@ -296,7 +301,6 @@ def cargar_todo():
     try:
         xls = pd.ExcelFile("padron de ofertas.xlsx")
         
-        # Hoja: OFERTAS
         if "OFERTAS" in xls.sheet_names:
             df_of = pd.read_excel(xls, sheet_name="OFERTAS")
             for _, fila in df_of.iterrows():
@@ -311,7 +315,6 @@ def cargar_todo():
                 if c_int: mapa_ofertas[c_int] = of_data
                 if c_sku: mapa_ofertas[c_sku] = of_data
 
-        # Hoja: DESTACADOS
         if "DESTACADOS" in xls.sheet_names:
             df_dest = pd.read_excel(xls, sheet_name="DESTACADOS")
             for _, fila in df_dest.iterrows():
@@ -326,7 +329,6 @@ def cargar_todo():
                 if c_int: mapa_ofertas[c_int] = of_data
                 if c_sku: mapa_ofertas[c_sku] = of_data
 
-        # Hoja: COMBOS
         if "COMBOS" in xls.sheet_names:
             df_comb = pd.read_excel(xls, sheet_name="COMBOS")
             for _, fila in df_comb.iterrows():
@@ -358,11 +360,13 @@ if df_base is not None:
         bot_buscar = st.form_submit_button("CONSEGUIR PRECIO")
 
     if busqueda:
+        busqueda_limpia = limpiar_codigo(busqueda)
         resultados_lista = []
-        if busqueda in mapa_base:
-            resultados_lista.append(mapa_base[busqueda])
+        
+        if busqueda_limpia in mapa_base:
+            resultados_lista.append(mapa_base[busqueda_limpia])
         else:
-            res_df = df_base[df_base['Descripcion_Clean'].str.lower().str.contains(busqueda, na=False)]
+            res_df = df_base[df_base['Descripcion_Clean'].str.lower().str.contains(busqueda.lower(), na=False)]
             for _, fila in res_df.iterrows():
                 resultados_lista.append({
                     'desc': fila['Descripcion_Clean'], 'precio': fila['Precio_Clean'],
@@ -374,79 +378,4 @@ if df_base is not None:
             st.write("---")
             for prod in resultados_lista:
                 oferta_vinculada = mapa_ofertas.get(prod['interno']) or mapa_ofertas.get(prod['scanner'])
-                precio_base_visual = formatear_precio(prod['precio'])
-                cod_int = prod['interno'] if prod['interno'] != '' else 'N/A'
-                cod_scan = prod['scanner'] if prod['scanner'] != '' else 'N/A'
                 
-                badge_tiempo = ""
-                es_oferta_valida = False
-                
-                if oferta_vinculada:
-                    resultado_evaluacion = evaluar_estado_oferta(oferta_vinculada['desde'], oferta_vinculada['hasta'])
-                    if resultado_evaluacion != 'vencido':
-                        es_oferta_valida = True
-                        badge_tiempo = resultado_evaluacion
-
-                if es_oferta_valida:
-                    precio_oferta_visual = formatear_precio(oferta_vinculada['precio_of'])
-                    txt_ahorro = f" | Ahorrás: {formatear_precio(oferta_vinculada['ahorro'])}" if oferta_vinculada['ahorro'] else ""
-                    txt_hasta = formatear_fecha(oferta_vinculada['hasta'])
-                    concepto_txt = str(oferta_vinculada['concepto']).upper() if pd.notna(oferta_vinculada['concepto']) else "PROMOCIÓN"
-                    tipo_promo = str(oferta_vinculada['tipo'])
-                    
-                    if tipo_promo == "COMBO":
-                        bloque_precio_html = (
-                            f'<div class="precio-split-container">'
-                            f'<div class="split-half">'
-                            f'<div class="split-label">Normal Indiv.</div>'
-                            f'<div class="precio-enorme" style="color:#94a3b8;">{precio_base_visual}</div>'
-                            f'</div>'
-                            f'<div class="split-half combo-side">'
-                            f'<div class="split-label" style="color:#ffa502;">Precio Combo</div>'
-                            f'<div class="precio-enorme precio-oferta-color">{precio_oferta_visual}</div>'
-                            f'</div>'
-                            f'</div>'
-                        )
-                    else:
-                        bloque_precio_html = (
-                            f'<div class="precio-contenedor">'
-                            f'<p class="precio-enorme precio-oferta-color">{precio_oferta_visual}</p>'
-                            f'<p style="margin:5px 0 0 0; font-size:13px; color:#94a3b8 !important;">Precio normal: <del>{precio_base_visual}</del></p>'
-                            f'</div>'
-                        )
-                    
-                    html_tarjeta = (
-                        f'<div class="producto-card con-oferta">'
-                        f'<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:6px;">'
-                        f'<span style="padding:4px 10px; background:linear-gradient(135deg, #ff4757, #ffa502); color:white; font-weight:700; font-size:11px; border-radius:8px; text-transform:uppercase; letter-spacing:0.5px;">🔥 {tipo_promo}</span>'
-                        f'{badge_tiempo}'
-                        f'</div>'
-                        f'<h2 class="producto-titulo">{prod["desc"]}</h2>'
-                        f'{bloque_precio_html}'
-                        f'<div class="info-oferta-bloque">'
-                        f'📦 <b>DETALLE:</b> {concepto_txt}{txt_ahorro}<br>'
-                        f'<span style="color:#94a3b8; font-size:12px;">📅 Vence: {txt_hasta}</span>'
-                        f'</div>'
-                        f'<div class="meta-flex">'
-                        f'<div class="meta-item"><span class="meta-label">Código Interno</span><span class="meta-valor">{cod_int}</span></div>'
-                        f'<div class="meta-item"><span class="meta-label">Sector</span><span class="meta-valor">{prod["sector"]}</span></div>'
-                        f'<div class="meta-item"><span class="meta-label">Scanner / EAN</span><span class="meta-valor">{cod_scan}</span></div>'
-                        f'</div>'
-                        f'</div>'
-                    )
-                else:
-                    html_tarjeta = (
-                        f'<div class="producto-card">'
-                        f'<h2 class="producto-titulo">{prod["desc"]}</h2>'
-                        f'<div class="precio-contenedor"><p class="precio-enorme">{precio_base_visual}</p></div>'
-                        f'<div class="meta-flex">'
-                        f'<div class="meta-item"><span class="meta-label">Código Interno</span><span class="meta-valor">{cod_int}</span></div>'
-                        f'<div class="meta-item"><span class="meta-label">Sector</span><span class="meta-valor">{prod["sector"]}</span></div>'
-                        f'<div class="meta-item"><span class="meta-label">Scanner / EAN</span><span class="meta-valor">{cod_scan}</span></div>'
-                        f'</div>'
-                        f'</div>'
-                    )
-                st.markdown(html_tarjeta, unsafe_allow_html=True)
-        else:
-            st.error(f"🔍 No se encontró ningún artículo para: '{busqueda}'.")
-            
