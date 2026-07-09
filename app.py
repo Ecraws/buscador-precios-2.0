@@ -281,9 +281,8 @@ def cargar_todo():
     df_base, mapa_base = None, {}
     mapa_puente_barras = {} 
     
-    # 1. CARGAR ARCHIVO "MAESTRO EAN.XLXS" (Cruce dinámico de columnas A, C y D)
+    # 1. CARGAR ARCHIVO "MAESTRO EAN"
     try:
-        # Cargamos el archivo. Soporta si lo llamaste maestro ean.xlsx o maestro ean.xlxs por error
         try:
             df_maestro = pd.read_excel("maestro ean.xlsx")
         except:
@@ -300,31 +299,28 @@ def cargar_todo():
             barras_c = fragmentar_codigos_multiples(fila.iloc[2])
             barras_d = fragmentar_codigos_multiples(fila.iloc[3])
             
-            # Asociamos todos los EANs encontrados al código interno
             for cb in (barras_c + barras_d):
                 if cb:
                     mapa_puente_barras[cb] = cod_interno_objetivo
     except Exception as e:
-        st.warning("ℹ️ No se pudo procesar 'maestro ean.xlsx'. Se usará el escaneo directo de productos.xlsx")
+        st.warning("ℹ️ No se pudo procesar 'maestro ean'. Se usará el escaneo directo de productos.xlsx")
 
-    # 2. CARGAR BASE DE PRODUCTOS PRECIOS
+    # 2. CARGAR BASE DE PRODUCTOS PRECIOS (Ignorando la columna de scanner vieja)
     try:
         df_base = pd.read_excel("productos.xlsx")
         df_base['Descripcion_Clean'] = df_base['Descripcion'].astype(str).str.strip()
         df_base['Precio_Clean'] = df_base['Precio'].fillna(0)
         df_base['cod_interno_clean'] = df_base['Codigo Interno'].apply(limpiar_codigo)
-        df_base['cod_scanner_clean'] = df_base['codigoscanner'].apply(limpiar_codigo)
         
         for _, fila in df_base.iterrows():
             prod_info = {
                 'desc': fila['Descripcion_Clean'], 'precio': fila['Precio_Clean'],
-                'interno': fila['cod_interno_clean'], 'scanner': fila['cod_scanner_clean'],
+                'interno': fila['cod_interno_clean'],
                 'sector': str(fila['Descrip Sector']).strip() if pd.notna(fila['Descrip Sector']) else 'N/A'
             }
+            # Vinculamos la información estrictamente al código interno básico
             if prod_info['interno']: 
                 mapa_base[prod_info['interno']] = prod_info
-            if prod_info['scanner']: 
-                mapa_base[prod_info['scanner']] = prod_info
     except Exception as e:
         st.error("⚠️ Error cargando 'productos.xlsx'")
 
@@ -395,7 +391,7 @@ if df_base is not None:
         busqueda_limpia = limpiar_codigo(busqueda)
         resultados_lista = []
         
-        # Si el código escaneado existe en el maestro EAN, lo convertimos automáticamente a su Código Interno
+        # Si el código buscado está en el maestro EAN, lo convertimos a su Código Interno
         if busqueda_limpia in mapa_puente_barras:
             busqueda_limpia = mapa_puente_barras[busqueda_limpia]
 
@@ -403,22 +399,21 @@ if df_base is not None:
         if busqueda_limpia in mapa_base:
             resultados_lista.append(mapa_base[busqueda_limpia])
         else:
-            # Si no hay coincidencia numérica exacta, busca coincidencia de texto en la descripción
+            # Búsqueda por descripción de texto en productos.xlsx
             res_df = df_base[df_base['Descripcion_Clean'].str.lower().str.contains(busqueda.lower(), na=False)]
             for _, fila in res_df.iterrows():
                 resultados_lista.append({
                     'desc': fila['Descripcion_Clean'], 'precio': fila['Precio_Clean'],
-                    'interno': fila['cod_interno_clean'], 'scanner': fila['cod_scanner_clean'],
+                    'interno': fila['cod_interno_clean'],
                     'sector': str(fila['Descrip Sector']).strip() if pd.notna(fila['Descrip Sector']) else 'N/A'
                 })
 
         if resultados_lista:
             st.write("---")
             for prod in resultados_lista:
-                oferta_vinculada = mapa_ofertas.get(prod['interno']) or mapa_ofertas.get(prod['scanner'])
+                oferta_vinculada = mapa_ofertas.get(prod['interno'])
                 precio_base_visual = formatear_precio(prod['precio'])
                 cod_int = prod['interno'] if prod['interno'] != '' else 'N/A'
-                cod_scan = prod['scanner'] if prod['scanner'] != '' else 'N/A'
                 
                 badge_tiempo = ""
                 es_oferta_valida = False
@@ -472,7 +467,6 @@ if df_base is not None:
                         f'<div class="meta-flex">'
                         f'<div class="meta-item"><span class="meta-label">Código Interno</span><span class="meta-valor">{cod_int}</span></div>'
                         f'<div class="meta-item"><span class="meta-label">Sector</span><span class="meta-valor">{prod["sector"]}</span></div>'
-                        f'<div class="meta-item"><span class="meta-label">Scanner / EAN</span><span class="meta-valor">{cod_scan}</span></div>'
                         f'</div>'
                         f'</div>'
                     )
@@ -484,10 +478,10 @@ if df_base is not None:
                         f'<div class="meta-flex">'
                         f'<div class="meta-item"><span class="meta-label">Código Interno</span><span class="meta-valor">{cod_int}</span></div>'
                         f'<div class="meta-item"><span class="meta-label">Sector</span><span class="meta-valor">{prod["sector"]}</span></div>'
-                        f'<div class="meta-item"><span class="meta-label">Scanner / EAN</span><span class="meta-valor">{cod_scan}</span></div>'
                         f'</div>'
                         f'</div>'
                     )
                 st.markdown(html_tarjeta, unsafe_allow_html=True)
         else:
             st.error(f"🔍 No se encontró ningún artículo para: '{busqueda}'.")
+        
