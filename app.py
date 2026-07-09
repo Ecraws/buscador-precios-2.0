@@ -5,7 +5,7 @@ from datetime import datetime
 
 # Configuración de página optimizada para rendimiento y diseño móvil
 st.set_page_config(
-    page_title="FlashPrice Neo Pro", 
+    page_title="ECRAWS PRICE", 
     page_icon="⚡", 
     layout="centered"
 )
@@ -113,13 +113,13 @@ st.markdown("""
         background: rgba(255, 255, 255, 0.03);
         padding: 12px 14px;
         border-radius: 16px;
-        border: 1px solid rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.05) !important;
         text-align: center;
     }
     
     .split-half.combo-side {
         background: rgba(255, 165, 0, 0.04);
-        border: 1px solid rgba(254, 165, 2, 0.2);
+        border: 1px solid rgba(254, 165, 2, 0.2) !important;
     }
 
     .precio-enorme {
@@ -187,7 +187,8 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-st.markdown('<h1 style="text-align: center; font-size: 28px; font-weight: 800; background: linear-gradient(90deg, #ffffff, #94a3b8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 20px;">⚡ FLASHPRICE NEO PRO</h1>', unsafe_allow_html=True)
+# Título de la app personalizado a ECRAWS PRICE
+st.markdown('<h1 style="text-align: center; font-size: 28px; font-weight: 800; background: linear-gradient(90deg, #ffffff, #94a3b8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 20px;">⚡ ECRAWS PRICE</h1>', unsafe_allow_html=True)
 
 def formatear_precio(valor):
     try:
@@ -291,11 +292,9 @@ def cargar_todo():
         for _, fila in df_maestro.iterrows():
             if fila.dropna().empty: continue
             
-            # Columna A (Indice 0): codigo_productos
             cod_interno_objetivo = limpiar_codigo(fila.iloc[0]) 
             if not cod_interno_objetivo: continue
             
-            # Columna C (Indice 2): cod1 & Columna D (Indice 3): cod2
             barras_c = fragmentar_codigos_multiples(fila.iloc[2])
             barras_d = fragmentar_codigos_multiples(fila.iloc[3])
             
@@ -305,7 +304,7 @@ def cargar_todo():
     except Exception as e:
         st.warning("ℹ️ No se pudo procesar 'maestro ean'. Se usará el escaneo directo de productos.xlsx")
 
-    # 2. CARGAR BASE DE PRODUCTOS PRECIOS (Ignorando la columna de scanner vieja)
+    # 2. CARGAR BASE DE PRODUCTOS PRECIOS
     try:
         df_base = pd.read_excel("productos.xlsx")
         df_base['Descripcion_Clean'] = df_base['Descripcion'].astype(str).str.strip()
@@ -318,14 +317,33 @@ def cargar_todo():
                 'interno': fila['cod_interno_clean'],
                 'sector': str(fila['Descrip Sector']).strip() if pd.notna(fila['Descrip Sector']) else 'N/A'
             }
-            # Vinculamos la información estrictamente al código interno básico
             if prod_info['interno']: 
                 mapa_base[prod_info['interno']] = prod_info
     except Exception as e:
         st.error("⚠️ Error cargando 'productos.xlsx'")
 
-    # 3. CARGAR PADRÓN DE OFERTAS
+    # 3. CARGAR PADRÓN DE OFERTAS CON RESOLUCIÓN DE DUPLICADOS POR FECHA MÁS RECIENTE
     mapa_ofertas = {}
+    
+    def agregar_oferta_con_prioridad(codigo, nueva_of):
+        if not codigo:
+            return
+        if codigo in mapa_ofertas:
+            existente = mapa_ofertas[codigo]
+            try:
+                dt_existente = pd.to_datetime(existente.get('desde'), errors='coerce')
+                dt_nueva = pd.to_datetime(nueva_of.get('desde'), errors='coerce')
+                
+                if pd.notna(dt_existente) and pd.notna(dt_nueva):
+                    if dt_nueva > dt_existente:
+                        mapa_ofertas[codigo] = nueva_of
+                elif pd.isna(dt_existente) and pd.notna(dt_nueva):
+                    mapa_ofertas[codigo] = nueva_of
+            except:
+                pass # Ante fallas estructurales de datos, mantiene la primera cargada de manera segura
+        else:
+            mapa_ofertas[codigo] = nueva_of
+
     try:
         xls = pd.ExcelFile("padron de ofertas.xlsx")
         
@@ -340,8 +358,8 @@ def cargar_todo():
                     'ahorro': fila.iloc[6], 'concepto': fila.iloc[9], 
                     'desde': fila.iloc[10], 'hasta': fila.iloc[11]
                 }
-                if c_int: mapa_ofertas[c_int] = of_data
-                if c_sku: mapa_ofertas[c_sku] = of_data
+                agregar_oferta_con_prioridad(c_int, of_data)
+                agregar_oferta_con_prioridad(c_sku, of_data)
 
         if "DESTACADOS" in xls.sheet_names:
             df_dest = pd.read_excel(xls, sheet_name="DESTACADOS")
@@ -354,8 +372,8 @@ def cargar_todo():
                     'ahorro': None, 'concepto': fila.iloc[5], 
                     'desde': fila.iloc[6], 'hasta': fila.iloc[7]
                 }
-                if c_int: mapa_ofertas[c_int] = of_data
-                if c_sku: mapa_ofertas[c_sku] = of_data
+                agregar_oferta_con_prioridad(c_int, of_data)
+                agregar_oferta_con_prioridad(c_sku, of_data)
 
         if "COMBOS" in xls.sheet_names:
             df_comb = pd.read_excel(xls, sheet_name="COMBOS")
@@ -371,9 +389,9 @@ def cargar_todo():
                 }
                 
                 for sub_int in lista_internos:
-                    if sub_int: mapa_ofertas[sub_int] = of_data
+                    agregar_oferta_con_prioridad(sub_int, of_data)
                 for sub_sku in lista_skus:
-                    if sub_sku: mapa_ofertas[sub_sku] = of_data
+                    agregar_oferta_con_prioridad(sub_sku, of_data)
 
     except Exception as e:
         st.warning("⚠️ Inconsistencia detectada en 'padron de ofertas.xlsx'.")
@@ -391,15 +409,12 @@ if df_base is not None:
         busqueda_limpia = limpiar_codigo(busqueda)
         resultados_lista = []
         
-        # Si el código buscado está en el maestro EAN, lo convertimos a su Código Interno
         if busqueda_limpia in mapa_puente_barras:
             busqueda_limpia = mapa_puente_barras[busqueda_limpia]
 
-        # Buscamos de forma exacta usando el Código Interno unificado
         if busqueda_limpia in mapa_base:
             resultados_lista.append(mapa_base[busqueda_limpia])
         else:
-            # Búsqueda por descripción de texto en productos.xlsx
             res_df = df_base[df_base['Descripcion_Clean'].str.lower().str.contains(busqueda.lower(), na=False)]
             for _, fila in res_df.iterrows():
                 resultados_lista.append({
@@ -484,4 +499,4 @@ if df_base is not None:
                 st.markdown(html_tarjeta, unsafe_allow_html=True)
         else:
             st.error(f"🔍 No se encontró ningún artículo para: '{busqueda}'.")
-        
+                        
