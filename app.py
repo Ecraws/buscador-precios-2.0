@@ -279,6 +279,35 @@ def fragmentar_codigos_multiples(celda):
 @st.cache_data(show_spinner=False)
 def cargar_todo():
     df_base, mapa_base = None, {}
+    mapa_puente_barras = {} 
+    
+    # 1. CARGAR ARCHIVO "MAESTRO EAN.XLXS" (Cruce dinámico de columnas A, C y D)
+    try:
+        # Cargamos el archivo. Soporta si lo llamaste maestro ean.xlsx o maestro ean.xlxs por error
+        try:
+            df_maestro = pd.read_excel("maestro ean.xlsx")
+        except:
+            df_maestro = pd.read_excel("maestro ean.xlxs")
+            
+        for _, fila in df_maestro.iterrows():
+            if fila.dropna().empty: continue
+            
+            # Columna A (Indice 0): codigo_productos
+            cod_interno_objetivo = limpiar_codigo(fila.iloc[0]) 
+            if not cod_interno_objetivo: continue
+            
+            # Columna C (Indice 2): cod1 & Columna D (Indice 3): cod2
+            barras_c = fragmentar_codigos_multiples(fila.iloc[2])
+            barras_d = fragmentar_codigos_multiples(fila.iloc[3])
+            
+            # Asociamos todos los EANs encontrados al código interno
+            for cb in (barras_c + barras_d):
+                if cb:
+                    mapa_puente_barras[cb] = cod_interno_objetivo
+    except Exception as e:
+        st.warning("ℹ️ No se pudo procesar 'maestro ean.xlsx'. Se usará el escaneo directo de productos.xlsx")
+
+    # 2. CARGAR BASE DE PRODUCTOS PRECIOS
     try:
         df_base = pd.read_excel("productos.xlsx")
         df_base['Descripcion_Clean'] = df_base['Descripcion'].astype(str).str.strip()
@@ -292,11 +321,14 @@ def cargar_todo():
                 'interno': fila['cod_interno_clean'], 'scanner': fila['cod_scanner_clean'],
                 'sector': str(fila['Descrip Sector']).strip() if pd.notna(fila['Descrip Sector']) else 'N/A'
             }
-            if prod_info['interno']: mapa_base[prod_info['interno']] = prod_info
-            if prod_info['scanner']: mapa_base[prod_info['scanner']] = prod_info
+            if prod_info['interno']: 
+                mapa_base[prod_info['interno']] = prod_info
+            if prod_info['scanner']: 
+                mapa_base[prod_info['scanner']] = prod_info
     except Exception as e:
         st.error("⚠️ Error cargando 'productos.xlsx'")
 
+    # 3. CARGAR PADRÓN DE OFERTAS
     mapa_ofertas = {}
     try:
         xls = pd.ExcelFile("padron de ofertas.xlsx")
@@ -350,9 +382,9 @@ def cargar_todo():
     except Exception as e:
         st.warning("⚠️ Inconsistencia detectada en 'padron de ofertas.xlsx'.")
 
-    return df_base, mapa_base, mapa_ofertas
+    return df_base, mapa_base, mapa_ofertas, mapa_puente_barras
 
-df_base, mapa_base, mapa_ofertas = cargar_todo()
+df_base, mapa_base, mapa_ofertas, mapa_puente_barras = cargar_todo()
 
 if df_base is not None:
     with st.form(key="formulario_busqueda", clear_on_submit=False):
@@ -363,9 +395,15 @@ if df_base is not None:
         busqueda_limpia = limpiar_codigo(busqueda)
         resultados_lista = []
         
+        # Si el código escaneado existe en el maestro EAN, lo convertimos automáticamente a su Código Interno
+        if busqueda_limpia in mapa_puente_barras:
+            busqueda_limpia = mapa_puente_barras[busqueda_limpia]
+
+        # Buscamos de forma exacta usando el Código Interno unificado
         if busqueda_limpia in mapa_base:
             resultados_lista.append(mapa_base[busqueda_limpia])
         else:
+            # Si no hay coincidencia numérica exacta, busca coincidencia de texto en la descripción
             res_df = df_base[df_base['Descripcion_Clean'].str.lower().str.contains(busqueda.lower(), na=False)]
             for _, fila in res_df.iterrows():
                 resultados_lista.append({
@@ -447,10 +485,4 @@ if df_base is not None:
                         f'<div class="meta-item"><span class="meta-label">Código Interno</span><span class="meta-valor">{cod_int}</span></div>'
                         f'<div class="meta-item"><span class="meta-label">Sector</span><span class="meta-valor">{prod["sector"]}</span></div>'
                         f'<div class="meta-item"><span class="meta-label">Scanner / EAN</span><span class="meta-valor">{cod_scan}</span></div>'
-                        f'</div>'
-                        f'</div>'
-                    )
-                st.markdown(html_tarjeta, unsafe_allow_html=True)
-        else:
-            st.error(f"🔍 No se encontró ningún artículo para: '{busqueda}'.")
-            
+                       
