@@ -476,7 +476,7 @@ if df_base is not None:
                         f'</div>'
                         f'</div>'
                     )
-                                else:
+                else:
                     html_tarjeta = (
                         f'<div class="producto-card">'
                         f'<h2 class="producto-titulo">{prod["desc"]}</h2>'
@@ -487,7 +487,7 @@ if df_base is not None:
                         f'<div class="meta-item"><span class="meta-label">Scanner / EAN</span><span class="meta-valor">{cod_scan}</span></div>'
                         f'</div>'
                         f'</div>'
-                    ) # <-- PARÉNTESIS CERRADO CORRECTAMENTE
+                    )
                 st.markdown(html_tarjeta, unsafe_allow_html=True)
         else:
             st.error(f"🔍 No se encontró ningún artículo para: '{busqueda}'.")
