@@ -4,283 +4,538 @@ import numpy as np
 from datetime import datetime
 import re
 
-# Configuración de página móvil
-st.set_page_config(page_title="ECRAWS PRICE", layout="centered")
+# Configuración de página optimizada para rendimiento y diseño móvil
+st.set_page_config(
+    page_title="ECRAWS PRICE", 
+    page_icon="⚡", 
+    layout="centered"
+)
 
-# FUNCIÓN DE SEGURIDAD PARA LIMPIAR CÓDIGOS DE BARRAS E INTERNOS
-def limpiar_codigo(val):
-    if pd.isna(val):
-        return ""
-    s = str(val).strip()
-    if s.endswith('.0'):
-        s = s[:-2]
-    return s.lower()
+# --- INICIALIZACIÓN DE ESTADOS PERSISTENTES ---
+if 'historial' not in st.session_state:
+    st.session_state.historial = []
+if 'busqueda_activa' not in st.session_state:
+    st.session_state.busqueda_activa = ""
 
-# BUSCADOR ROBUSTO DE COLUMNAS POR PALABRAS CLAVE
-def buscar_columna(df, palabras_clave):
-    for col in df.columns:
-        col_min = str(col).lower().strip()
-        for pc in palabras_clave:
-            if pc in col_min:
-                return col
-    return None
-
-@st.cache_data(ttl=600)
-def cargar_todo():
-    mapa_base = {}
-    mapa_ofertas = {}
-    mapa_puente_barras = {}
+# --- ARQUITECTURA DE DISEÑO ULTRA-PREMIUM (CSS) ---
+st.markdown("""
+    <style>
+    /* Estilos globales y reseteo */
+    .main, .block-container {
+        max-width: 100% !important;
+        padding: 14px !important;
+        overflow-x: hidden !important;
+        background-color: #0b0f19 !important; /* Fondo Dark Neo-Premium */
+    }
     
-    # 1. CARGAR MAESTRO EAN (maestro ean.xlsx)
-    try:
-        df_ean = pd.read_excel("maestro ean.xlsx")
-        for _, fila in df_ean.iterrows():
-            if fila.dropna().empty: continue
-            cod_interno = limpiar_codigo(fila.iloc[0])
-            if not cod_interno: continue
-            
-            # Procesar cod1 (Columna C -> Índice 2) y cod2 (Columna D -> Índice 3)
-            for idx_col in [2, 3]:
-                if idx_col < len(fila) and pd.notna(fila.iloc[idx_col]):
-                    c_scanner = limpiar_codigo(fila.iloc[idx_col])
-                    if c_scanner and c_scanner != 'nan':
-                        mapa_puente_barras[c_scanner] = cod_interno
-    except Exception as e:
-        st.warning(f"Aviso Maestro EAN: {e}")
+    h1, h2, h3, h4, p, label {
+        color: #ffffff !important;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+    }
+    
+    /* --- BARRA DE BÚSQUEDA FLOTANTE (Formulario st.form) --- */
+    .stTextInput input {
+        background-color: #1e293b !important;
+        color: #ffffff !important;
+        border: 1px solid #334155 !important;
+        border-radius: 14px !important;
+        padding: 12px !important;
+        font-size: 16px !important;
+    }
+    .stTextInput input:focus {
+        border-color: #00f2fe !important;
+        box-shadow: 0 0 10px rgba(0, 242, 254, 0.2) !important;
+    }
 
-    # 2. CARGAR PRODUCTOS BASE (productos.xlsx)
+    div[data-testid="stForm"] {
+        padding: 16px !important;
+        border-radius: 20px !important;
+        background: rgba(30, 41, 59, 0.7) !important;
+        border: 1px solid rgba(255, 255, 255, 0.05) !important;
+        backdrop-filter: blur(10px) !important;
+        box-shadow: 0px 10px 30px rgba(0, 0, 0, 0.2) !important;
+    }
+    
+    .stButton button {
+        background: linear-gradient(135deg, #2ecc71 0%, #00f2fe 100%) !important;
+        color: #0b0f19 !important;
+        font-weight: 700 !important;
+        border-radius: 14px !important;
+        border: none !important;
+        padding: 12px !important;
+        transition: all 0.3s ease !important;
+        width: 100% !important;
+    }
+    
+    /* Botones secundarios (como Agregar/Quitar) */
+    .btn-secundario button {
+        background: rgba(255, 255, 255, 0.08) !important;
+        color: #ffffff !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        border-radius: 10px !important;
+        padding: 6px 12px !important;
+        font-size: 13px !important;
+        width: auto !important;
+    }
+    .btn-secundario button:hover {
+        background: rgba(255, 255, 255, 0.15) !important;
+    }
+
+    .btn-eliminar button {
+        background: rgba(231, 76, 60, 0.2) !important;
+        color: #ff4757 !important;
+        border: 1px solid rgba(231, 76, 60, 0.3) !important;
+        border-radius: 10px !important;
+        padding: 6px 12px !important;
+        font-size: 13px !important;
+        width: 100% !important;
+    }
+    
+    /* --- TARJETAS DE PRODUCTOS --- */
+    .producto-card {
+        background: linear-gradient(135deg, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 0.95) 100%);
+        padding: 24px;
+        border-radius: 24px;
+        box-shadow: 0px 15px 35px rgba(0, 0, 0, 0.4);
+        margin-top: 16px;
+        margin-bottom: 10px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .producto-card::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 4px;
+        background: linear-gradient(90deg, #64748b, #cbd5e1);
+    }
+
+    .producto-card.con-oferta::before {
+        background: linear-gradient(90deg, #ff4757, #ffa502) !important;
+    }
+    
+    .producto-titulo {
+        margin: 0 0 14px 0 !important; 
+        color: #ffffff !important; 
+        font-size: 22px !important; 
+        font-weight: 800 !important;
+        line-height: 1.3;
+    }
+    
+    .precio-contenedor {
+        background: rgba(255, 255, 255, 0.03);
+        padding: 14px 18px;
+        border-radius: 16px;
+        margin-bottom: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    
+    .precio-split-container {
+        display: flex;
+        gap: 12px;
+        margin-bottom: 14px;
+        width: 100%;
+    }
+    
+    .split-half {
+        flex: 1;
+        background: rgba(255, 255, 255, 0.03);
+        padding: 12px 14px;
+        border-radius: 16px;
+        border: 1px solid rgba(255, 255, 255, 0.05) !important;
+        text-align: center;
+    }
+    
+    .split-half.combo-side {
+        background: rgba(255, 165, 0, 0.04);
+        border: 1px solid rgba(254, 165, 2, 0.2) !important;
+    }
+
+    /* --- EL PRECIO ES EL REY --- */
+    .precio-enorme {
+        color: #ffffff;
+        font-size: 46px; 
+        font-weight: 900;
+        line-height: 1;
+        margin: 0;
+        letter-spacing: -1px;
+    }
+
+    .precio-oferta-color {
+        background: linear-gradient(90deg, #ff4757 0%, #ffa502 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .split-label {
+        font-size: 11px;
+        text-transform: uppercase;
+        color: #64748b;
+        font-weight: 700;
+        margin-bottom: 4px;
+        letter-spacing: 0.5px;
+    }
+
+    /* --- TAGS DE DATOS FLOTANTES (Capsules) --- */
+    .info-oferta-bloque {
+        background: rgba(30, 41, 59, 0.8);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        padding: 12px;
+        border-radius: 14px;
+        margin-bottom: 14px;
+        font-size: 13px;
+    }
+    
+    .status-tiempo {
+        font-size: 11px;
+        font-weight: 700;
+        padding: 4px 8px;
+        border-radius: 6px;
+        display: inline-block;
+    }
+    .status-activo { background: rgba(46, 204, 113, 0.15); color: #2ecc71 !important; }
+    .status-futuro { background: rgba(255, 165, 0, 0.15); color: #ffa502 !important; }
+    .status-ultimo { 
+        background: rgba(231, 76, 60, 0.25); 
+        color: #ff4757 !important; 
+        border: 1px solid rgba(231, 76, 60, 0.5);
+        animation: pulse_clean 2s infinite ease-in-out;
+    }
+    
+    @keyframes pulse_clean {
+        0% { opacity: 1; }
+        50% { opacity: 0.5; }
+        100% { opacity: 1; }
+    }
+    
+    /* Grid de datos técnicos con cápsulas de diseño */
+    .meta-flex { display: flex; flex-direction: column; gap: 6px; }
+    .meta-item {
+        font-size: 13px; color: #94a3b8; display: flex; align-items: center; justify-content: space-between;
+        background: rgba(255, 255, 255, 0.01); padding: 6px 12px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.02);
+    }
+    .meta-label { font-weight: 700; color: #64748b; font-size: 11px; text-transform: uppercase; }
+    .meta-valor { color: #cbd5e1; font-weight: 600; }
+    
+    /* Estilos del Historial en el Expander */
+    .historial-container {
+        background: rgba(15, 23, 42, 0.6);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 16px;
+        padding: 12px;
+        margin-bottom: 10px;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+# Título Premium de la App
+st.markdown('<h1 style="text-align: center; font-size: 28px; font-weight: 800; background: linear-gradient(90deg, #ffffff, #94a3b8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 20px;">⚡ ECRAWS PRICE</h1>', unsafe_allow_html=True)
+
+# --- AUXILIARES Y FORMATEROS DE PRECIO ---
+def formatear_precio(valor):
+    try:
+        if pd.isna(valor) or valor == '': return "N/A"
+        entero = round(float(valor))
+        return f"${entero:,.0f}".replace(",", ".")
+    except:
+        return f"${valor}"
+
+def formatear_fecha(val):
+    try:
+        if pd.isna(val): return "Sin fecha"
+        dt = pd.to_datetime(val, errors='coerce')
+        if pd.notna(dt):
+            return dt.strftime("%d/%m/%Y")
+        return str(val).split(" ")[0]
+    except:
+        return str(val)
+
+def evaluar_estado_oferta(desde_val, hasta_val):
+    try:
+        hoy = datetime.now().date()
+        dt_hasta = pd.to_datetime(hasta_val, errors='coerce')
+        dt_desde = pd.to_datetime(desde_val, errors='coerce')
+        
+        if pd.isna(dt_hasta) or pd.isna(dt_desde) or not hasattr(dt_hasta, 'date') or not hasattr(dt_desde, 'date'):
+            return ""
+            
+        f_hasta = dt_hasta.date()
+        f_desde = dt_desde.date()
+            
+        if hoy > f_hasta:
+            return 'vencido'
+            
+        if hoy == f_hasta:
+            return '<span class="status-tiempo status-ultimo">⚠️ ¡ÚLTIMO DÍA! Quitar cartel al cerrar</span>'
+            
+        diferencia = (hoy - f_desde).days
+        if diferencia >= 0:
+            return f'<span class="status-tiempo status-activo">⏱️ Activa (Hace {diferencia} días)</span>'
+        else:
+            return f'<span class="status-tiempo status-futuro">⏳ Inicia en {abs(diferencia)} días</span>'
+    except:
+        return ""
+
+def limpiar_codigo(cod):
+    if pd.isna(cod): return ""
+    if isinstance(cod, float):
+        if cod.is_integer():
+            return str(int(cod)).strip().lower()
+        else:
+            st_cod = f"{cod:f}".strip() if 'e' in str(cod).lower() else str(cod).strip()
+            if '.' in st_cod and st_cod.split('.')[1] == '0':
+                return st_cod.split('.')[0].lower()
+            return st_cod.lower()
+            
+    if isinstance(cod, int):
+        return str(cod).strip().lower()
+
+    st_cod = str(cod).strip()
+    if 'e+' in st_cod.lower():
+        try:
+            st_cod = f"{float(st_cod):.0f}"
+        except:
+            pass
+            
+    if '.' in st_cod and st_cod.split('.')[1] == '0':
+        st_cod = st_cod.split('.')[0]
+    return st_cod.lower()
+
+def fragmentar_codigos_multiples(celda):
+    if pd.isna(celda): return []
+    if isinstance(celda, (int, float)):
+        return [limpiar_codigo(celda)]
+        
+    texto = str(celda).strip()
+    partes = re.split(r'\s*[\|\-,\s]\s*', texto)
+    
+    codigos_limpios = []
+    for p in partes:
+        if p.strip() != "":
+            cod_p = limpiar_codigo(p)
+            if cod_p:
+                codigos_limpios.append(cod_p)
+    return codigos_limpios
+
+# --- CARGA DE DATOS INDEXADA (OPTIMIZADA) ---
+@st.cache_data(show_spinner=False)
+def cargar_todo():
+    df_base, mapa_base = None, {}
+    mapa_puente_barras = {} 
+    
+    # 1. Maestro EAN
+    try:
+        df_maestro = pd.read_excel("maestro ean.xlsx")
+        for _, fila in df_maestro.iterrows():
+            if fila.dropna().empty: continue
+            cod_interno_objetivo = limpiar_codigo(fila.iloc[0]) 
+            if not cod_interno_objetivo: continue
+            
+            barras_c = fragmentar_codigos_multiples(fila.iloc[2])
+            barras_d = fragmentar_codigos_multiples(fila.iloc[3])
+            
+            for cb in (barras_c + barras_d):
+                if cb:
+                    mapa_puente_barras[cb] = cod_interno_objetivo
+    except:
+        pass
+
+    # 2. Productos
     try:
         df_base = pd.read_excel("productos.xlsx")
-        # Limpiar nombres de columnas para evitar fallos de mayúsculas/minúsculas o espacios
-        df_base.columns = [str(c).strip() for c in df_base.columns]
+        df_base['Descripcion_Clean'] = df_base['Descripcion'].astype(str).str.strip()
+        df_base['Precio_Clean'] = df_base['Precio'].fillna(0)
+        df_base['cod_interno_clean'] = df_base['Codigo Interno'].apply(limpiar_codigo)
         
-        col_interno_base = buscar_columna(df_base, ["codigo interno", "cod interno", "interno", "codigo"])
-        col_desc_base = buscar_columna(df_base, ["descripcion", "descrip", "nombre", "articulo"])
-        col_precio_base = buscar_columna(df_base, ["precio", "venta", "actual"])
-        col_sector_base = buscar_columna(df_base, ["sector", "descrip sector", "rubro"])
-
         for _, fila in df_base.iterrows():
-            if fila.dropna().empty: continue
-            c_int = limpiar_codigo(fila[col_interno_base]) if col_interno_base else ""
-            if c_int:
-                mapa_base[c_int] = {
-                    'desc': str(fila[col_desc_base]).strip() if col_desc_base else 'Sin Nombre',
-                    'precio': fila[col_precio_base] if col_precio_base else 0,
-                    'interno': c_int,
-                    'sector': str(fila[col_sector_base]).strip() if col_sector_base else 'N/A'
-                }
-    except Exception as e:
-        st.error(f"Error Productos Base: {e}")
+            prod_info = {
+                'desc': fila['Descripcion_Clean'], 'precio': fila['Precio_Clean'],
+                'interno': fila['cod_interno_clean'],
+                'sector': str(fila['Descrip Sector']).strip() if pd.notna(fila['Descrip Sector']) else 'N/A'
+            }
+            if prod_info['interno']: 
+                mapa_base[prod_info['interno']] = prod_info
+    except:
+        pass
 
-    # Función auxiliar para priorizar la oferta más reciente en la carga
-    def agregar_oferta_segura(codigo, nueva_of):
-        if not codigo or codigo == 'nan': return
+    # 3. Padrón de Ofertas
+    mapa_ofertas = {}
+    
+    def agregar_oferta_con_prioridad(codigo, nueva_of):
+        if not codigo: return
         if codigo in mapa_ofertas:
             existente = mapa_ofertas[codigo]
             try:
-                dt_existente = pd.to_datetime(existente.get('hasta'), errors='coerce')
-                dt_nueva = pd.to_datetime(nueva_of.get('hasta'), errors='coerce')
-                if pd.notna(dt_existente) and pd.notna(dt_nueva) and dt_nueva > dt_existente:
+                dt_existente = pd.to_datetime(existente['desde'], errors='coerce')
+                dt_nueva = pd.to_datetime(nueva_of['desde'], errors='coerce')
+                if pd.notna(dt_existente) and pd.notna(dt_nueva):
+                    if dt_nueva > dt_existente:
+                        mapa_ofertas[codigo] = nueva_of
+                elif pd.isna(dt_existente) and pd.notna(dt_nueva):
                     mapa_ofertas[codigo] = nueva_of
-            except: pass
+            except:
+                mapa_ofertas[codigo] = nueva_of
         else:
             mapa_ofertas[codigo] = nueva_of
 
-    # 3. CARGAR PADRÓN DE OFERTAS (padron de ofertas.xlsx)
     try:
         xls = pd.ExcelFile("padron de ofertas.xlsx")
         
-        # --- HOJA OFERTAS ---
         if "OFERTAS" in xls.sheet_names:
             df_of = pd.read_excel(xls, sheet_name="OFERTAS")
-            
-            # Buscar las columnas de forma inteligente por su nombre aproximado
-            c_int_col = buscar_columna(df_of, ["codigo interno", "cod.int", "interno"]) or df_of.columns[0]
-            c_sku_col = buscar_columna(df_of, ["codigo barras", "sku", "barras", "ean"]) or df_of.columns[2]
-            precio_col = buscar_columna(df_of, ["precio oferta", "precio of", "precio_of"]) or df_of.columns[5]
-            ahorro_col = buscar_columna(df_of, ["ahorro", "descuento"]) or df_of.columns[6]
-            concepto_col = buscar_columna(df_of, ["concepto", "detalle", "promocion"]) or df_of.columns[9]
-            hasta_col = buscar_columna(df_of, ["hasta", "vencimiento", "fecha"]) or df_of.columns[11]
-
             for _, fila in df_of.iterrows():
                 if fila.dropna().empty: continue
-                c_int = limpiar_codigo(fila[c_int_col])
-                c_sku = limpiar_codigo(fila[c_sku_col])
-                
+                c_int = limpiar_codigo(fila.iloc[0])
+                c_sku = limpiar_codigo(fila.iloc[2])
                 of_data = {
-                    'tipo': 'OFERTA',
-                    'precio_of': fila[precio_col],
-                    'ahorro': fila[ahorro_col] if ahorro_col in df_of.columns else None,
-                    'concepto': str(fila[concepto_col]).strip() if concepto_col in df_of.columns else "OFERTA",
-                    'hasta': fila[hasta_col] if hasta_col in df_of.columns else None
+                    'tipo': 'OFERTA', 'precio_of': fila.iloc[5], 
+                    'ahorro': fila.iloc[6], 'concepto': fila.iloc[9], 
+                    'desde': fila.iloc[10], 'hasta': fila.iloc[11]
                 }
-                if c_int: agregar_oferta_segura(c_int, of_data)
-                if c_sku: agregar_oferta_segura(c_sku, of_data)
+                agregar_oferta_con_prioridad(c_int, of_data)
+                agregar_oferta_con_prioridad(c_sku, of_data)
 
-        # --- HOJA DESTACADOS ---
         if "DESTACADOS" in xls.sheet_names:
             df_dest = pd.read_excel(xls, sheet_name="DESTACADOS")
-            
-            c_int_col = buscar_columna(df_dest, ["codigo interno", "cod.int", "interno"]) or df_dest.columns[0]
-            c_sku_col = buscar_columna(df_dest, ["codigo barras", "sku", "barras", "ean"]) or df_dest.columns[2]
-            precio_col = buscar_columna(df_dest, ["precio destacado", "precio", "destacado"]) or df_dest.columns[4]
-            concepto_col = buscar_columna(df_dest, ["concepto", "detalle", "promocion"]) or df_dest.columns[5]
-            hasta_col = buscar_columna(df_dest, ["hasta", "vencimiento", "fecha"]) or df_dest.columns[7]
-
             for _, fila in df_dest.iterrows():
                 if fila.dropna().empty: continue
-                c_int = limpiar_codigo(fila[c_int_col])
-                c_sku = limpiar_codigo(fila[c_sku_col])
-                
+                c_int = limpiar_codigo(fila.iloc[0])
+                c_sku = limpiar_codigo(fila.iloc[2])
                 of_data = {
-                    'tipo': 'DESTACADO',
-                    'precio_of': fila[precio_col],
-                    'ahorro': None,
-                    'concepto': str(fila[concepto_col]).strip() if concepto_col in df_dest.columns else "DESTACADO",
-                    'hasta': fila[hasta_col] if hasta_col in df_dest.columns else None
+                    'tipo': 'DESTACADO', 'precio_of': fila.iloc[4], 
+                    'ahorro': None, 'concepto': fila.iloc[5], 
+                    'desde': fila.iloc[6], 'hasta': fila.iloc[7]
                 }
-                if c_int: agregar_oferta_segura(c_int, of_data)
-                if c_sku: agregar_oferta_segura(c_sku, of_data)
+                agregar_oferta_con_prioridad(c_int, of_data)
+                agregar_oferta_con_prioridad(c_sku, of_data)
 
-        # --- HOJA COMBOS ---
         if "COMBOS" in xls.sheet_names:
             df_comb = pd.read_excel(xls, sheet_name="COMBOS")
-            
-            c_int_col = buscar_columna(df_comb, ["codigo interno", "cod.int", "interno"]) or df_comb.columns[0]
-            c_sku_col = buscar_columna(df_comb, ["codigo barras", "sku", "barras", "ean"]) or df_comb.columns[2]
-            precio_col = buscar_columna(df_comb, ["precio combo", "precio", "combo"]) or df_comb.columns[5]
-            ahorro_col = buscar_columna(df_comb, ["ahorro", "descuento"]) or df_comb.columns[6]
-            concepto_col = buscar_columna(df_comb, ["concepto", "detalle", "promocion"]) or df_comb.columns[3]
-            hasta_col = buscar_columna(df_comb, ["hasta", "vencimiento", "fecha"]) or df_comb.columns[8]
-
             for _, fila in df_comb.iterrows():
                 if fila.dropna().empty: continue
-                
-                def fragmentar(celda):
-                    if pd.isna(celda): return []
-                    tokens = re.split(r'\s*[\|\-,\s]\s*', str(celda))
-                    resultados = []
-                    for t in tokens:
-                        t_clean = t.strip()
-                        if t_clean.endswith('.0'):
-                            t_clean = t_clean[:-2]
-                        if t_clean and t_clean.lower() != 'nan':
-                            resultados.append(t_clean.lower())
-                    return resultados
-
-                lista_internos = fragmentar(fila[c_int_col])
-                lista_skus = fragmentar(fila[c_sku_col])
-                
+                lista_internos = fragmentar_codigos_multiples(fila.iloc[0])
+                lista_skus = fragmentar_codigos_multiples(fila.iloc[2])
                 of_data = {
-                    'tipo': 'COMBO',
-                    'precio_of': fila[precio_col],
-                    'ahorro': fila[ahorro_col] if ahorro_col in df_comb.columns else None,
-                    'concepto': str(fila[concepto_col]).strip() if concepto_col in df_comb.columns else "COMBO",
-                    'hasta': fila[hasta_col] if hasta_col in df_comb.columns else None
+                    'tipo': 'COMBO', 'precio_of': fila.iloc[5], 
+                    'ahorro': fila.iloc[6], 'concepto': fila.iloc[3], 
+                    'desde': fila.iloc[7], 'hasta': fila.iloc[8]
                 }
-                for sub_int in lista_internos: agregar_oferta_segura(sub_int, of_data)
-                for sub_sku in lista_skus: agregar_oferta_segura(sub_sku, of_data)
-                
-    except Exception as e:
-        st.error(f"Error Padrón de Ofertas: {e}")
+                for sub_int in lista_internos:
+                    agregar_oferta_con_prioridad(sub_int, of_data)
+                for sub_sku in lista_skus:
+                    agregar_oferta_con_prioridad(sub_sku, of_data)
+    except:
+        pass
 
-    return mapa_base, mapa_ofertas, mapa_puente_barras
+    return df_base, mapa_base, mapa_ofertas, mapa_puente_barras
 
-# Inicializar bases indexadas rápidas
-mapa_base, mapa_ofertas, mapa_puente_barras = cargar_todo()
+df_base, mapa_base, mapa_ofertas, mapa_puente_barras = cargar_todo()
 
-# --- DISEÑO DE LA INTERFAZ ---
-st.title("⚡ ECRAWS PRICE")
+# --- FUNCIONES DE CONTROL DEL HISTORIAL ---
+def agregar_a_comparacion(producto, promo):
+    if any(item['interno'] == producto['interno'] for item in st.session_state.historial):
+        st.toast(f"⚠️ '{producto['desc'][:15]}...' ya está en la lista de comparación.")
+        return
+    
+    st.session_state.historial.append({
+        'interno': producto['interno'],
+        'desc': producto['desc'],
+        'precio_base': producto['precio'],
+        'sector': producto['sector'],
+        'promo': promo
+    })
+    st.toast("➕ Agregado para comparar")
 
-busqueda_raw = st.text_input("Buscar Producto", placeholder="Código interno, de barras o nombre...").strip()
-
-if busqueda_raw:
-    busqueda = limpiar_codigo(busqueda_raw)
-
-    # 1. Determinar el código interno real usando el maestro EAN si hace falta
-    codigo_objetivo = busqueda
-    if busqueda in mapa_puente_barras:
-        codigo_objetivo = mapa_puente_barras[busqueda]
-
-    # 2. Buscar coincidencias en la base de productos
-    encontrados = []
-    if codigo_objetivo in mapa_base:
-        encontrados.append(mapa_base[codigo_objetivo])
-    else:
-        termino_busqueda = busqueda_raw.lower()
-        for prod in mapa_base.values():
-            if termino_busqueda in prod['desc'].lower():
-                encontrados.append(prod)
-
-    # 3. Desplegar los resultados en pantalla (OPCIÓN 2)
-    if encontrados:
-        for p in encontrados:
-            try:
-                precio_normal = round(float(p['precio']))
-            except Exception:
-                precio_normal = 0
+# --- RENDERIZADO DEL PANEL DE HISTORIAL ---
+if st.session_state.historial:
+    with st.expander(f"📊 Historial de Comparación ({len(st.session_state.historial)})", expanded=True):
+        indice_a_eliminar = None
+        for idx, item in enumerate(st.session_state.historial):
+            precio_base = formatear_precio(item['precio_base'])
+            promo_info = item['promo']
             
-            oferta = mapa_ofertas.get(p['interno'])
-            
-            oferta_valida = False
-            f_vence_str = "SIN FECHA"
-            if oferta:
-                try:
-                    hoy = datetime.now().date()
-                    dt_vencimiento = pd.to_datetime(oferta['hasta'], errors='coerce')
-                    
-                    if pd.notna(dt_vencimiento):
-                        fecha_vencimiento = dt_vencimiento.date()
-                        f_vence_str = fecha_vencimiento.strftime('%d/%m/%Y')
-                        if hoy <= fecha_vencimiento:
-                            oferta_valida = True
-                    else:
-                        # Si no tiene fecha definida, la consideramos válida por defecto
-                        oferta_valida = True
-                        f_vence_str = "S/D"
-                except:
-                    oferta_valida = False
-
-            # --- RENDERIZADO VISUAL CON LA OPCIÓN 2 ---
-            if oferta_valida:
-                try:
-                    precio_promo = round(float(oferta['precio_of']))
-                except Exception:
-                    precio_promo = 0
-                tipo_badge = oferta['tipo']
-                detalle_promo = oferta['concepto'].upper()
-                
-                color_tarjeta = "#ff3838" if tipo_badge != "COMBO" else "#ff9f1a"
-                
-                st.markdown(f"""
-                <div style="background-color:#0f172a; padding:20px; border-radius:16px; border:2.5px solid {color_tarjeta}; margin-bottom:15px; box-shadow: 0px 4px 15px {color_tarjeta}20; font-family:-apple-system,BlinkMacSystemFont,sans-serif;">
-                    <div style="background-color:{color_tarjeta}; color:#ffffff; padding:4px 10px; border-radius:8px; font-size:11px; font-weight:bold; display:inline-block; margin-bottom:12px;">🚨 {tipo_badge}</div>
-                    <h3 style="color:#ffffff; font-size:20px; font-weight:800; margin:0 0 10px 0; line-height:1.3;">{p['desc']}</h3>
-                    <p style="color:#cbd5e1; margin:0; font-size:13px; font-weight:600; background-color:#1e293b; padding:8px 12px; border-radius:8px; border-left:4px solid {color_tarjeta};">📢 {detalle_promo}</p>
-                    <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-top:15px;">
-                        <div>
-                            <p style="color:#94a3b8; margin:0; font-size:12px; text-decoration:line-through;">Normal: ${precio_normal:,.0f}</p>
-                            <p style="color:{color_tarjeta}; font-size:42px; margin:0; font-weight:900; line-height:1;">${precio_promo:,.0f}</p>
-                        </div>
-                        <div style="text-align:right;">
-                            <p style="color:#64748b; margin:0; font-size:11px;">Vence</p>
-                            <p style="color:#cbd5e1; margin:0; font-size:12px; font-weight:bold;">{f_vence_str}</p>
-                        </div>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
+            if promo_info:
+                precio_final = formatear_precio(promo_info['precio_of'])
+                badge_promo = f"🔥 <span style='color: #ffa502; font-weight: bold;'>{promo_info['tipo']}</span>"
             else:
-                sector_texto = str(p['sector']).upper() if p['sector'] and str(p['sector']).lower() != 'nan' else "SIN SECTOR"
-                st.markdown(f"""
-                <div style="background-color:#0f172a; padding:20px; border-radius:16px; border:1px solid rgba(255,255,255,0.1); margin-bottom:15px; font-family:-apple-system,BlinkMacSystemFont,sans-serif;">
-                    <span style="color:#64748b; font-size:11px; font-weight:600; letter-spacing:1px; display:block; margin-bottom:8px;">{sector_texto}</span>
-                    <h3 style="color:#ffffff; font-size:20px; font-weight:800; margin:0 0 12px 0; line-height:1.3;">{p['desc']}</h3>
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <span style="color:#2ecc71; font-size:38px; font-weight:900; line-height:1;">${precio_normal:,.0f}</span>
-                        <span style="color:#64748b; font-size:11px; background-color:#1e293b; padding:4px 8px; border-radius:6px;">Cod: {p['interno'].upper()}</span>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
-    else:
-        st.error("❌ Producto no encontrado en las bases de datos.")
+                precio_final = precio_base
+                badge_promo = "🏷️ <span style='color: #94a3b8;'>Normal</span>"
                 
+            col_info, col_btn = st.columns([4, 1])
+            with col_info:
+                st.markdown(
+                    f"<div class='historial-container'>"
+                    f"<strong style='font-size:14px; color:#fff;'>{item['desc']}</strong><br>"
+                    f"<span style='font-size:12px; color:#94a3b8;'>"
+                    f"Precio Final: <strong style='color:#2ecc71; font-size:13px;'>{precio_final}</strong> ({badge_promo}) | Base: {precio_base}"
+                    f"</span>"
+                    f"</div>",
+                    unsafe_allow_html=True
+                )
+            with col_btn:
+                st.markdown('<div class="btn-eliminar">', unsafe_allow_html=True)
+                if st.button("❌", key=f"del_{item['interno']}_{idx}"):
+                    indice_a_eliminar = idx
+                st.markdown('</div>', unsafe_allow_html=True)
+        
+        # Eliminar de manera segura fuera del bucle de renderizado para evitar IndexErrors
+        if indice_a_eliminar is not None:
+            st.session_state.historial.pop(indice_a_eliminar)
+            st.rerun()
+            
+        if st.button("🗑️ Vaciar Historial", key="vaciar_historial"):
+            st.session_state.historial = []
+            st.rerun()
+
+# --- INTERFAZ DE BÚSQUEDA ---
+if df_base is not None:
+    # Formulario blindado: Solo procesa la captura del texto de búsqueda
+    with st.form(key="formulario_busqueda", clear_on_submit=False):
+        busqueda_input = st.text_input("🔍 Buscar Producto:", placeholder="Código o nombre...", value=st.session_state.busqueda_activa)
+        bot_buscar = st.form_submit_button("CONSEGUIR PRECIO")
+        if bot_buscar:
+            st.session_state.busqueda_activa = busqueda_input
+
+    # El procesamiento de resultados se hace afuera para liberar botones y st.rerun()
+    if st.session_state.busqueda_activa:
+        busqueda_limpia = limpiar_codigo(st.session_state.busqueda_activa)
+        resultados_lista = []
+        
+        if busqueda_limpia in mapa_puente_barras:
+            busqueda_limpia = mapa_puente_barras[busqueda_limpia]
+
+        if busqueda_limpia in mapa_base:
+            resultados_lista.append(mapa_base[busqueda_limpia])
+        else:
+            res_df = df_base[df_base['Descripcion_Clean'].str.lower().str.contains(st.session_state.busqueda_activa.lower(), na=False)]
+            for _, fila in res_df.iterrows():
+                resultados_lista.append({
+                    'desc': fila['Descripcion_Clean'], 'precio': fila['Precio_Clean'],
+                    'interno': fila['cod_interno_clean'],
+                    'sector': str(fila['Descrip Sector']).strip() if pd.notna(fila['Descrip Sector']) else 'N/A'
+                })
+
+        # --- MOSTRAR RESULTADOS ---
+        if resultados_lista:
+            st.write("---")
+            for idx, prod in enumerate(resultados_lista):
+                oferta_vinculada = mapa_ofertas.get(prod['interno'])
+                precio_base_visual = formatear_precio(prod['precio'])
+                cod_int = prod['interno'] if prod['interno'] != '' else 'N/A'
+                
+                badge_tiempo = ""
+                es_oferta_valida = False
+                
+                if oferta_vinculada:
+                    resultado_evaluacion = evaluar_estado_oferta(oferta_vinculada['desde'], oferta_vinculada['hasta'])
+                    if resultado_evaluacion != 'vencido':
+                        es_oferta_valida = True
+                        badge_tiempo = resultado_evaluacion
+
+                # Renderizar tarjeta gráfica
+                if es_oferta_valida:
+                    precio_oferta_visua
