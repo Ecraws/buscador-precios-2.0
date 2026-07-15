@@ -180,7 +180,7 @@ st.markdown("""
         letter-spacing: 0.5px;
     }
 
-    /* --- TAGS DE DATOS FLOTANTES (Capsules) --- */
+    /* --- TAGS DE DATOS FLOTANTES --- */
     .info-oferta-bloque {
         background: rgba(30, 41, 59, 0.8);
         border: 1px solid rgba(255, 255, 255, 0.05);
@@ -212,7 +212,7 @@ st.markdown("""
         100% { opacity: 1; }
     }
     
-    /* Grid de datos técnicos con cápsulas de diseño */
+    /* Grid de datos técnicos */
     .meta-flex { display: flex; flex-direction: column; gap: 6px; }
     .meta-item {
         font-size: 13px; color: #94a3b8; display: flex; align-items: center; justify-content: space-between;
@@ -221,7 +221,7 @@ st.markdown("""
     .meta-label { font-weight: 700; color: #64748b; font-size: 11px; text-transform: uppercase; }
     .meta-valor { color: #cbd5e1; font-weight: 600; }
     
-    /* Estilos del Historial en el Expander */
+    /* Estilos del Historial */
     .historial-container {
         background: rgba(15, 23, 42, 0.6);
         border: 1px solid rgba(255, 255, 255, 0.05);
@@ -232,10 +232,10 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Título Premium de la App
+# Título de la App
 st.markdown('<h1 style="text-align: center; font-size: 28px; font-weight: 800; background: linear-gradient(90deg, #ffffff, #94a3b8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 20px;">⚡ ECRAWS PRICE</h1>', unsafe_allow_html=True)
 
-# --- AUXILIARES Y FORMATEROS DE PRECIO ---
+# --- AUXILIARES Y FORMATEROS ---
 def formatear_precio(valor):
     try:
         if pd.isna(valor) or valor == '': return "N/A"
@@ -274,7 +274,7 @@ def evaluar_estado_oferta(desde_val, hasta_val):
             
         diferencia = (hoy - f_desde).days
         if diferencia >= 0:
-            return f'<span class="status-tiempo status-activo">⏱️ Activa (Hace {diferencia} días)</span>'
+            return f'<span class="status-tiempo status-activo">⏱️ Activa (Hace {diferencia} days)</span>'
         else:
             return f'<span class="status-tiempo status-futuro">⏳ Inicia en {abs(diferencia)} días</span>'
     except:
@@ -321,7 +321,7 @@ def fragmentar_codigos_multiples(celda):
                 codigos_limpios.append(cod_p)
     return codigos_limpios
 
-# --- CARGA DE DATOS INDEXADA (OPTIMIZADA) ---
+# --- CARGA DE DATOS INDEXADA (OPTIMIZADA Y CALIBRADA) ---
 @st.cache_data(show_spinner=False)
 def cargar_todo():
     df_base, mapa_base = None, {}
@@ -362,7 +362,7 @@ def cargar_todo():
     except:
         pass
 
-    # 3. Padrón de Ofertas
+    # 3. Padrón de Ofertas (Calibrado de Columnas)
     mapa_ofertas = {}
     
     def agregar_oferta_con_prioridad(codigo, nueva_of):
@@ -385,34 +385,46 @@ def cargar_todo():
     try:
         xls = pd.ExcelFile("padron de ofertas.xlsx")
         
+        # Corrección de la lectura de la pestaña OFERTAS
         if "OFERTAS" in xls.sheet_names:
             df_of = pd.read_excel(xls, sheet_name="OFERTAS")
             for _, fila in df_of.iterrows():
                 if fila.dropna().empty: continue
                 c_int = limpiar_codigo(fila.iloc[0])
                 c_sku = limpiar_codigo(fila.iloc[2])
+                
+                # Se asigna la columna del detalle/concepto correctamente (columna 3 / "LLEVAN_X" en tu Excel original)
                 of_data = {
-                    'tipo': 'OFERTA', 'precio_of': fila.iloc[5], 
-                    'ahorro': fila.iloc[6], 'concepto': fila.iloc[9], 
-                    'desde': fila.iloc[10], 'hasta': fila.iloc[11]
+                    'tipo': 'OFERTA', 
+                    'precio_of': fila.iloc[5], 
+                    'ahorro': fila.iloc[6], 
+                    'concepto': fila.iloc[3], # Columna "Llevando 1 u / Llevando 2 u"
+                    'desde': fila.iloc[10], 
+                    'hasta': fila.iloc[11]
                 }
                 agregar_oferta_con_prioridad(c_int, of_data)
                 agregar_oferta_con_prioridad(c_sku, of_data)
 
+        # Corrección de la lectura de la pestaña DESTACADOS
         if "DESTACADOS" in xls.sheet_names:
             df_dest = pd.read_excel(xls, sheet_name="DESTACADOS")
             for _, fila in df_dest.iterrows():
                 if fila.dropna().empty: continue
                 c_int = limpiar_codigo(fila.iloc[0])
                 c_sku = limpiar_codigo(fila.iloc[2])
+                
                 of_data = {
-                    'tipo': 'DESTACADO', 'precio_of': fila.iloc[4], 
-                    'ahorro': None, 'concepto': fila.iloc[5], 
-                    'desde': fila.iloc[6], 'hasta': fila.iloc[7]
+                    'tipo': 'DESTACADO', 
+                    'precio_of': fila.iloc[4], 
+                    'ahorro': None, 
+                    'concepto': fila.iloc[3], # Detalle de la promo destacado
+                    'desde': fila.iloc[6], 
+                    'hasta': fila.iloc[7]
                 }
                 agregar_oferta_con_prioridad(c_int, of_data)
                 agregar_oferta_con_prioridad(c_sku, of_data)
 
+        # Pestaña COMBOS (Sin cambios, ya funcionaba bien)
         if "COMBOS" in xls.sheet_names:
             df_comb = pd.read_excel(xls, sheet_name="COMBOS")
             for _, fila in df_comb.iterrows():
@@ -420,9 +432,12 @@ def cargar_todo():
                 lista_internos = fragmentar_codigos_multiples(fila.iloc[0])
                 lista_skus = fragmentar_codigos_multiples(fila.iloc[2])
                 of_data = {
-                    'tipo': 'COMBO', 'precio_of': fila.iloc[5], 
-                    'ahorro': fila.iloc[6], 'concepto': fila.iloc[3], 
-                    'desde': fila.iloc[7], 'hasta': fila.iloc[8]
+                    'tipo': 'COMBO', 
+                    'precio_of': fila.iloc[5], 
+                    'ahorro': fila.iloc[6], 
+                    'concepto': fila.iloc[3], 
+                    'desde': fila.iloc[7], 
+                    'hasta': fila.iloc[8]
                 }
                 for sub_int in lista_internos:
                     agregar_oferta_con_prioridad(sub_int, of_data)
@@ -482,7 +497,7 @@ if st.session_state.historial:
                     indice_a_eliminar = idx
                 st.markdown('</div>', unsafe_allow_html=True)
         
-        # Eliminar de manera segura fuera del bucle de renderizado para evitar IndexErrors
+        # Eliminar de manera segura fuera del bucle
         if indice_a_eliminar is not None:
             st.session_state.historial.pop(indice_a_eliminar)
             st.rerun()
@@ -493,14 +508,13 @@ if st.session_state.historial:
 
 # --- INTERFAZ DE BÚSQUEDA ---
 if df_base is not None:
-    # Formulario blindado: Solo procesa la captura del texto de búsqueda
     with st.form(key="formulario_busqueda", clear_on_submit=False):
         busqueda_input = st.text_input("🔍 Buscar Producto:", placeholder="Código o nombre...", value=st.session_state.busqueda_activa)
         bot_buscar = st.form_submit_button("CONSEGUIR PRECIO")
         if bot_buscar:
             st.session_state.busqueda_activa = busqueda_input
 
-    # El procesamiento de resultados se hace afuera para liberar botones y st.rerun()
+    # Procesar resultados
     if st.session_state.busqueda_activa:
         busqueda_limpia = limpiar_codigo(st.session_state.busqueda_activa)
         resultados_lista = []
@@ -520,7 +534,7 @@ if df_base is not None:
                 })
 
         # --- MOSTRAR RESULTADOS ---
-        if resultados_lista:
+if resultados_lista:
             st.write("---")
             for idx, prod in enumerate(resultados_lista):
                 oferta_vinculada = mapa_ofertas.get(prod['interno'])
@@ -597,7 +611,6 @@ if df_base is not None:
                 
                 st.markdown(html_tarjeta, unsafe_allow_html=True)
                 
-                # Botón de añadir al historial justo debajo de la tarjeta
                 st.markdown('<div class="btn-secundario">', unsafe_allow_html=True)
                 promo_a_guardar = oferta_vinculada if es_oferta_valida else None
                 if st.button("➕ Añadir a comparación", key=f"add_{prod['interno']}_{idx}"):
