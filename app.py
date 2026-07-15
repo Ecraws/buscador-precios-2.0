@@ -524,7 +524,7 @@ if df_base is not None:
 
         if busqueda_limpia in mapa_base:
             resultados_lista.append(mapa_base[busqueda_limpia])
-                                else:
+        else:
             res_df = df_base[df_base['Descripcion_Clean'].str.lower().str.contains(st.session_state.busqueda_activa.lower(), na=False)]
             for _, fila in res_df.iterrows():
                 resultados_lista.append({
