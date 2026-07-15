@@ -538,4 +538,71 @@ if df_base is not None:
 
                 # Renderizar tarjeta gráfica
                 if es_oferta_valida:
-                    precio_oferta_visua
+                    precio_oferta_visual = formatear_precio(oferta_vinculada['precio_of'])
+                    txt_ahorro = f" | Ahorrás: {formatear_precio(oferta_vinculada['ahorro'])}" if oferta_vinculada['ahorro'] else ""
+                    txt_hasta = formatear_fecha(oferta_vinculada['hasta'])
+                    concepto_txt = str(oferta_vinculada['concepto']).upper() if pd.notna(oferta_vinculada['concepto']) else "PROMOCIÓN"
+                    tipo_promo = str(oferta_vinculada['tipo'])
+                    
+                    if tipo_promo == "COMBO":
+                        bloque_precio_html = (
+                            f'<div class="precio-split-container">'
+                            f'<div class="split-half">'
+                            f'<div class="split-label">Normal Indiv.</div>'
+                            f'<div class="precio-enorme" style="color:#94a3b8;">{precio_base_visual}</div>'
+                            f'</div>'
+                            f'<div class="split-half combo-side">'
+                            f'<div class="split-label" style="color:#ffa502;">Precio Combo</div>'
+                            f'<div class="precio-enorme precio-oferta-color">{precio_oferta_visual}</div>'
+                            f'</div>'
+                            f'</div>'
+                        )
+                    else:
+                        bloque_precio_html = (
+                            f'<div class="precio-contenedor">'
+                            f'<p class="precio-enorme precio-oferta-color">{precio_oferta_visual}</p>'
+                            f'<p style="margin:5px 0 0 0; font-size:13px; color:#94a3b8 !important;">Precio normal: <del>{precio_base_visual}</del></p>'
+                            f'</div>'
+                        )
+                    
+                    html_tarjeta = (
+                        f'<div class="producto-card con-oferta">'
+                        f'<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:6px;">'
+                        f'<span style="padding:4px 10px; background:linear-gradient(135deg, #ff4757, #ffa502); color:white; font-weight:700; font-size:11px; border-radius:8px; text-transform:uppercase; letter-spacing:0.5px;">🔥 {tipo_promo}</span>'
+                        f'{badge_tiempo}'
+                        f'</div>'
+                        f'<h2 class="producto-titulo">{prod["desc"]}</h2>'
+                        f'{bloque_precio_html}'
+                        f'<div class="info-oferta-bloque">'
+                        f'📦 <b>DETALLE:</b> {concepto_txt}{txt_ahorro}<br>'
+                        f'<span style="color:#94a3b8; font-size:12px;">📅 Vence: {txt_hasta}</span>'
+                        f'</div>'
+                        f'<div class="meta-flex">'
+                        f'<div class="meta-item"><span class="meta-label">Código Interno</span><span class="meta-valor">{cod_int}</span></div>'
+                        f'<div class="meta-item"><span class="meta-label">Sector</span><span class="meta-valor">{prod["sector"]}</span></div>'
+                        f'</div>'
+                        f'</div>'
+                    )
+                else:
+                    html_tarjeta = (
+                        f'<div class="producto-card">'
+                        f'<h2 class="producto-titulo">{prod["desc"]}</h2>'
+                        f'<div class="precio-contenedor"><p class="precio-enorme">{precio_base_visual}</p></div>'
+                        f'<div class="meta-flex">'
+                        f'<div class="meta-item"><span class="meta-label">Código Interno</span><span class="meta-valor">{cod_int}</span></div>'
+                        f'<div class="meta-item"><span class="meta-label">Sector</span><span class="meta-valor">{prod["sector"]}</span></div>'
+                        f'</div>'
+                        f'</div>'
+                    )
+                
+                st.markdown(html_tarjeta, unsafe_allow_html=True)
+                
+                # Botón de añadir al historial justo debajo de la tarjeta
+                st.markdown('<div class="btn-secundario">', unsafe_allow_html=True)
+                promo_a_guardar = oferta_vinculada if es_oferta_valida else None
+                if st.button("➕ Añadir a comparación", key=f"add_{prod['interno']}_{idx}"):
+                    agregar_a_comparacion(prod, promo_a_guardar)
+                    st.rerun()
+                st.markdown('</div>', unsafe_allow_html=True)
+        else:
+            st.error(f"🔍 No se encontró ningún artículo para: '{st.session_state.busqueda_activa}'.")
